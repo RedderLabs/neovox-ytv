@@ -78,3 +78,4 @@
   - El disco de Render persiste la DB entre deploys
   - Max 20 playlists (límite en server.js)
   - Puerto por defecto: 3000 (configurable con env PORT)
+  - CORS habilitado para Flutter web y apps externas
