@@ -283,7 +283,12 @@ app.get('/api/yt/audio/:videoId', async (req, res) => {
       info = cached.info;
       console.log(`NEOVOX: Info de cache para ${videoId}`);
     } else {
-      info = await ytdl.getInfo(url);
+      console.log(`NEOVOX: Llamando ytdl.getInfo para ${videoId}...`);
+      // Timeout de 15s para evitar hang infinito
+      info = await Promise.race([
+        ytdl.getInfo(url),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT: ytdl.getInfo tardó más de 15s')), 15000))
+      ]);
       urlCache.set(videoId, { info, ts: Date.now() });
       console.log(`NEOVOX: Info obtenida para ${videoId}, formatos: ${info.formats.length}`);
     }
@@ -342,6 +347,42 @@ app.get('/api/yt/audio/:videoId', async (req, res) => {
     if (!res.headersSent) {
       res.status(502).json({ error: e.message });
     }
+  }
+});
+
+// GET /api/yt/test/:videoId — diagnóstico: prueba si ytdl puede extraer info
+app.get('/api/yt/test/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+  const start = Date.now();
+  try {
+    const info = await Promise.race([
+      ytdl.getInfo(url),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT 15s')), 15000))
+    ]);
+    const audioFormats = info.formats.filter(f => f.hasAudio && !f.hasVideo);
+    const allAudio = info.formats.filter(f => f.hasAudio);
+    res.json({
+      ok: true,
+      elapsed: Date.now() - start + 'ms',
+      title: info.videoDetails?.title,
+      totalFormats: info.formats.length,
+      audioOnlyFormats: audioFormats.length,
+      allAudioFormats: allAudio.length,
+      formats: audioFormats.map(f => ({
+        mimeType: f.mimeType?.split(';')[0],
+        bitrate: f.audioBitrate,
+        size: f.contentLength,
+        codec: f.audioCodec
+      }))
+    });
+  } catch (e) {
+    res.json({
+      ok: false,
+      elapsed: Date.now() - start + 'ms',
+      error: e.message,
+      stack: e.stack?.split('\n').slice(0, 3)
+    });
   }
 });
 
