@@ -57,7 +57,6 @@
        NODE_ENV=production
        HOST=0.0.0.0
        PORT=3000
-       DATABASE_URL=NeonDB
 
   Redeploy manual:
     - Dashboard > neovox-ytv > Manual Deploy > Deploy latest commit
