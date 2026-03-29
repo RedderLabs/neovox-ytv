@@ -1,3 +1,143 @@
+// ── Auth: cuenta anónima estilo Mullvad ────────────────────────
+let currentAccount = localStorage.getItem('neovox_account');
+
+const authScreen   = document.getElementById('authScreen');
+const authCreate   = document.getElementById('authCreate');
+const authShow     = document.getElementById('authShow');
+const authLogin    = document.getElementById('authLogin');
+const authNumberEl = document.getElementById('authNumberDisplay');
+const confirmCheck = document.getElementById('confirmCheck');
+const enterBtn     = document.getElementById('enterBtn');
+const loginInput   = document.getElementById('loginInput');
+const loginError   = document.getElementById('loginError');
+
+function formatAccountNumber(num) {
+  return num.replace(/(\d{4})(?=\d)/g, '$1 ');
+}
+
+// Formateo automático del input de login
+loginInput.addEventListener('input', () => {
+  const raw = loginInput.value.replace(/\D/g, '').slice(0, 16);
+  loginInput.value = formatAccountNumber(raw);
+  loginError.style.display = 'none';
+});
+
+// Crear cuenta
+document.getElementById('createAccBtn').addEventListener('click', async () => {
+  try {
+    const res = await fetch('/api/account/create', { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    authNumberEl.textContent = formatAccountNumber(data.accountNumber);
+    authNumberEl.dataset.raw = data.accountNumber;
+    authCreate.style.display = 'none';
+    authShow.style.display = '';
+  } catch (e) {
+    console.error('Error creando cuenta:', e);
+  }
+});
+
+// Copiar número
+document.getElementById('copyAccBtn').addEventListener('click', () => {
+  const num = authNumberEl.dataset.raw;
+  navigator.clipboard.writeText(num).then(() => {
+    document.getElementById('copyAccBtn').textContent = 'COPIADO';
+    setTimeout(() => { document.getElementById('copyAccBtn').textContent = 'COPIAR'; }, 2000);
+  });
+});
+
+// Descargar número como .txt
+document.getElementById('downloadAccBtn').addEventListener('click', () => {
+  const num = authNumberEl.dataset.raw;
+  const blob = new Blob([`NEOVOX YT-V — Cuenta anonima\n\nNumero de cuenta: ${num}\n\nGuarda este archivo en un lugar seguro.\n`], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `neovox-cuenta-${num.slice(0, 4)}.txt`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+});
+
+// Checkbox confirmar
+confirmCheck.addEventListener('change', () => {
+  enterBtn.disabled = !confirmCheck.checked;
+});
+
+// Entrar tras crear cuenta
+enterBtn.addEventListener('click', () => {
+  const num = authNumberEl.dataset.raw;
+  localStorage.setItem('neovox_account', num);
+  currentAccount = num;
+  authScreen.classList.add('hidden');
+  initApp();
+});
+
+// Mostrar login
+document.getElementById('showLoginBtn').addEventListener('click', () => {
+  authCreate.style.display = 'none';
+  authLogin.style.display = '';
+});
+
+// Mostrar crear
+document.getElementById('showCreateBtn').addEventListener('click', () => {
+  authLogin.style.display = 'none';
+  authCreate.style.display = '';
+});
+
+// Login
+document.getElementById('loginBtn').addEventListener('click', async () => {
+  const num = loginInput.value.replace(/\D/g, '');
+  if (num.length !== 16) {
+    loginError.textContent = 'EL NUMERO DEBE TENER 16 DIGITOS';
+    loginError.style.display = '';
+    return;
+  }
+  try {
+    const res = await fetch('/api/account/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accountNumber: num })
+    });
+    if (res.status === 404) {
+      loginError.textContent = 'CUENTA NO ENCONTRADA';
+      loginError.style.display = '';
+      return;
+    }
+    if (!res.ok) throw new Error('Error de servidor');
+
+    localStorage.setItem('neovox_account', num);
+    currentAccount = num;
+    authScreen.classList.add('hidden');
+    initApp();
+  } catch (e) {
+    loginError.textContent = 'ERROR DE CONEXION';
+    loginError.style.display = '';
+  }
+});
+
+// Auto-login si ya tiene cuenta guardada
+if (currentAccount) {
+  authScreen.classList.add('hidden');
+  // initApp se llama abajo al final del archivo
+}
+
+// Header: botón logout
+function addLogoutButton() {
+  const header = document.querySelector('.app-header .flex');
+  if (document.getElementById('logoutBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'logoutBtn';
+  btn.className = 'theme-btn';
+  btn.title = 'Cerrar sesion';
+  btn.style.marginLeft = '8px';
+  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--btn-fill)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
+  btn.addEventListener('click', () => {
+    localStorage.removeItem('neovox_account');
+    location.reload();
+  });
+  header.appendChild(btn);
+}
+
 // ── Estado global ──────────────────────────────────────────────
 let playlists = [];
 let activeId  = null;
@@ -132,10 +272,14 @@ function extractId(url) {
   return m ? m[1] : null;
 }
 
-// ── API (reemplaza localStorage) ───────────────────────────────
+// ── API (con cuenta anónima) ──────────────────────────────────
+function authHeaders(extra = {}) {
+  return { 'X-Account-Number': currentAccount, ...extra };
+}
+
 async function loadFromAPI() {
   try {
-    const res = await fetch('/api/playlists');
+    const res = await fetch('/api/playlists', { headers: authHeaders() });
     if (!res.ok) throw new Error(res.statusText);
     playlists = await res.json();
   } catch (e) {
@@ -147,7 +291,7 @@ async function loadFromAPI() {
 async function savePlaylistAPI(name, ytId) {
   const res = await fetch('/api/playlists', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ name, ytId })
   });
   if (res.status === 409) {
@@ -159,7 +303,7 @@ async function savePlaylistAPI(name, ytId) {
 }
 
 async function removePlaylistAPI(id) {
-  const res = await fetch(`/api/playlists/${id}`, { method: 'DELETE' });
+  const res = await fetch(`/api/playlists/${id}`, { method: 'DELETE', headers: authHeaders() });
   if (!res.ok && res.status !== 404) throw new Error(res.statusText);
 }
 
@@ -788,11 +932,17 @@ window.addEventListener('appinstalled', () => {
 });
 
 // ── Init ───────────────────────────────────────────────────────
-(async () => {
+async function initApp() {
+  addLogoutButton();
   await registerVisit();
   await Promise.all([loadFromAPI(), loadStats()]);
   buildWf();
   setArmRest();
   updateDots('stopped');
   renderList();
-})();
+}
+
+// Auto-login si ya tiene cuenta
+if (currentAccount) {
+  initApp();
+}

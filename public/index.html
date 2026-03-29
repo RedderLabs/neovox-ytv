@@ -63,6 +63,55 @@
 
 <body class="min-h-screen flex flex-col items-center">
 
+  <!-- ===== PANTALLA LOGIN (estilo Mullvad) ===== -->
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-header">
+        <div class="auth-dot"></div>
+        <span class="auth-brand">NEOVOX</span>
+        <span class="auth-sub">YT-V</span>
+      </div>
+
+      <!-- Vista: Crear cuenta -->
+      <div id="authCreate" class="auth-view">
+        <div class="auth-title">NUEVA CUENTA</div>
+        <p class="auth-desc">Sin email. Sin contraseña. Solo un numero.</p>
+        <button id="createAccBtn" class="auth-btn-primary">GENERAR CUENTA ANONIMA</button>
+        <div class="auth-divider"><span>O</span></div>
+        <button id="showLoginBtn" class="auth-btn-secondary">YA TENGO UNA CUENTA</button>
+      </div>
+
+      <!-- Vista: Mostrar número generado -->
+      <div id="authShow" class="auth-view" style="display:none">
+        <div class="auth-title">TU NUMERO DE CUENTA</div>
+        <div class="auth-warning">Guardalo. Lo necesitaras para iniciar sesion.</div>
+        <div class="auth-number" id="authNumberDisplay">0000000000000000</div>
+        <div class="auth-actions">
+          <button id="copyAccBtn" class="auth-btn-copy">COPIAR</button>
+          <button id="downloadAccBtn" class="auth-btn-copy">DESCARGAR</button>
+        </div>
+        <label class="auth-confirm">
+          <input type="checkbox" id="confirmCheck" />
+          <span>Confirmo que he guardado mi numero de cuenta</span>
+        </label>
+        <button id="enterBtn" class="auth-btn-primary" disabled>ENTRAR</button>
+      </div>
+
+      <!-- Vista: Login -->
+      <div id="authLogin" class="auth-view" style="display:none">
+        <div class="auth-title">INICIAR SESION</div>
+        <p class="auth-desc">Escribe tu numero de cuenta (16 digitos).</p>
+        <input id="loginInput" class="auth-input" type="text" maxlength="19" placeholder="0000 0000 0000 0000" inputmode="numeric" autocomplete="off" />
+        <div id="loginError" class="auth-error" style="display:none"></div>
+        <button id="loginBtn" class="auth-btn-primary">INICIAR SESION</button>
+        <div class="auth-divider"><span>O</span></div>
+        <button id="showCreateBtn" class="auth-btn-secondary">CREAR CUENTA NUEVA</button>
+      </div>
+
+      <div class="auth-footer">Tu numero de cuenta es el unico identificador que necesitas. No almacenamos datos personales.</div>
+    </div>
+  </div>
+
   <!-- YouTube IFrame oculto -->
   <div id="yt-hidden" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;top:0;left:0;">
     <div id="yt-player"></div>

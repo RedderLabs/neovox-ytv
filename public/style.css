@@ -840,6 +840,275 @@ body {
   letter-spacing: 1.5px;
 }
 
+/* ========== AUTH SCREEN (estilo Mullvad) ========== */
+.auth-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg-body);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.auth-screen.hidden {
+  display: none;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
+  border-radius: 16px;
+  padding: 32px 28px;
+  box-shadow: var(--shadow-panel);
+}
+
+.auth-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 28px;
+  justify-content: center;
+}
+
+.auth-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dot-on);
+  box-shadow: 0 0 10px var(--dot-on);
+  animation: blink 2s ease-in-out infinite;
+}
+
+.auth-brand {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: var(--text-header);
+}
+
+.auth-sub {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 14px;
+  letter-spacing: 3px;
+  color: var(--text-sub);
+}
+
+.auth-view { text-align: center; }
+
+.auth-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--text-title);
+  margin-bottom: 12px;
+}
+
+.auth-desc {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-sub);
+  letter-spacing: 1px;
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.auth-warning {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--dot-on);
+  letter-spacing: 1px;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(0, 170, 255, 0.06);
+  border: 1px solid rgba(0, 170, 255, 0.15);
+  line-height: 1.6;
+}
+
+.auth-number {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 26px;
+  letter-spacing: 4px;
+  color: var(--text-title);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  word-break: break-all;
+  user-select: all;
+  text-align: center;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.auth-btn-copy {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  padding: 8px 18px;
+  border-radius: 6px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  color: var(--dot-on);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.auth-btn-copy:hover {
+  border-color: var(--btn-hover-border);
+  box-shadow: 0 0 10px rgba(0, 100, 255, 0.15);
+}
+
+.auth-confirm {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  cursor: pointer;
+}
+
+.auth-confirm input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--dot-on);
+  cursor: pointer;
+}
+
+.auth-confirm span {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--text-sub);
+}
+
+.auth-btn-primary {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--add-bg);
+  border: 1px solid var(--add-border);
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--add-text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+  border-color: var(--add-hover-border);
+  box-shadow: 0 0 18px rgba(0, 80, 255, 0.25);
+}
+
+.auth-btn-primary:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.auth-btn-secondary {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid var(--input-border);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--text-sub);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.auth-btn-secondary:hover {
+  border-color: var(--btn-hover-border);
+  color: var(--text-title);
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--input-border);
+}
+
+.auth-divider span {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--text-sub);
+  letter-spacing: 2px;
+}
+
+.auth-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  color: var(--input-color);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 20px;
+  letter-spacing: 4px;
+  text-align: center;
+  outline: none;
+  margin-bottom: 12px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.auth-input:focus {
+  border-color: var(--input-focus-border);
+  box-shadow: 0 0 12px rgba(0, 70, 180, 0.2);
+}
+
+.auth-input::placeholder {
+  color: var(--input-placeholder);
+  letter-spacing: 6px;
+}
+
+.auth-error {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: #ff4444;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  background: rgba(255, 68, 68, 0.08);
+  border: 1px solid rgba(255, 68, 68, 0.2);
+}
+
+.auth-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--text-sub);
+  letter-spacing: 1px;
+  line-height: 1.8;
+  opacity: 0.6;
+}
+
 /* ========== WAVEFORM BARS ========== */
 .wf-bar {
   width: 3px;
