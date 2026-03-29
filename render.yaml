@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: neovox-ytv
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 3000
+    disk:
+      name: neovox-data
+      mountPath: /app/data
+      sizeGB: 1

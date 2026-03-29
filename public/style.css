@@ -1,0 +1,706 @@
+/* ========== TEMA: VARIABLES CSS ========== */
+:root {
+  /* Dark (default) */
+  --bg-body: #050810;
+  --bg-panel: linear-gradient(145deg, #0a0f1e, #0d1528, #080c18);
+  --bg-panel-alt: linear-gradient(145deg, #08101e, #060c18);
+  --border-panel: #1a3a6e;
+  --border-panel-alt: #112244;
+  --border-corner: #2060cc;
+  --bg-platter: radial-gradient(circle at 50%, #0a1020, #080e1c, #060a14);
+  --shadow-platter: 0 0 30px rgba(0,80,200,0.12), inset 0 0 20px rgba(0,0,0,0.6);
+  --bg-vinyl: conic-gradient(from 0deg, #0c0c18, #131322, #0c0c18, #131322, #0c0c18, #131322, #0c0c18, #131322, #0c0c18, #131322, #0c0c18, #131322, #0c0c18, #131322, #0c0c18, #131322);
+  --groove-color: rgba(100,150,255,0.06);
+  --bg-label: radial-gradient(circle at 40% 35%, #1a3a8f, #0d1f5c, #071540);
+  --border-label: #2a4aaf;
+  --text-label: #88aaff;
+  --text-label-sub: #4466cc;
+  --bg-axle: radial-gradient(circle at 35% 30%, #8ab0ff, #2a4aaf, #0a1a50);
+  --border-axle: #4060af;
+  --arm-gradient: linear-gradient(to bottom, #3060af, #1a3060, #3060af);
+  --head-gradient: linear-gradient(135deg, #4080ff, #1a4aaf);
+  --needle-gradient: linear-gradient(to bottom, #88aaff, #cc44ff);
+  --pivot-gradient: radial-gradient(circle at 35% 30%, #60a0ff, #1a3a8f, #0a1a40);
+  --border-pivot: #3060af;
+  --text-header: #4080cc;
+  --text-title: #88aaff;
+  --text-sub: #2a4a80;
+  --text-sys: #2a5090;
+  --text-vol: #2a4a80;
+  --text-vol-val: #3060aa;
+  --dot-off: #1a3a6e;
+  --dot-on: #00aaff;
+  --prog-bg: #0a1530;
+  --prog-fill: linear-gradient(to right, #0040bb, #0088ff, #00ccff);
+  --prog-dot: #00aaff;
+  --prog-time: #2a4a80;
+  --btn-bg: linear-gradient(145deg, #0c1428, #080e1c);
+  --btn-border: #1a3a6e;
+  --btn-fill: #4070cc;
+  --btn-hover-border: #3060cc;
+  --btn-hover-fill: #00aaff;
+  --btn-active-border: #0060ff;
+  --add-bg: linear-gradient(145deg, #0c1e4a, #081430);
+  --add-border: #1a4090;
+  --add-hover-border: #4080ff;
+  --add-text: #4080ff;
+  --input-bg: #040810;
+  --input-border: #0f2040;
+  --input-color: #88aaff;
+  --input-placeholder: #0d1e3a;
+  --input-focus-border: #1a4aaa;
+  --pl-bg: #060c1a;
+  --pl-border: #0f2040;
+  --pl-hover-border: #1a4090;
+  --pl-active-border: #0055cc;
+  --pl-active-bg: #08163a;
+  --pl-name: #6090dd;
+  --pl-name-active: #88aaff;
+  --pl-id-color: #1a3060;
+  --pl-badge-bg: #040c1c;
+  --pl-badge-border: #0a1e40;
+  --pl-badge-color: #1a3a6e;
+  --scroll-track: #040810;
+  --scroll-thumb: #1a3a6e;
+  --wf-gradient: linear-gradient(to top, #0040aa, #0088ff);
+  --wf-active-gradient: linear-gradient(to top, #0060dd, #00ccff);
+  --scanline-color: rgba(0,150,255,0.015);
+  --vol-track: #0a1530;
+  --vol-fill: #0060cc;
+  --vol-thumb: radial-gradient(circle at 35% 35%, #60aaff, #0050cc);
+  --vol-thumb-border: #0070ff;
+  --counter-color: #1a3a6e;
+  --label-color: #2a4a70;
+  --form-bg: #060c1a;
+  --form-border: #0f2040;
+  --pl-icon-bg: linear-gradient(135deg, #0d1f5c, #071540);
+  --pl-icon-border: #1a3080;
+  --pl-icon-vinyl: conic-gradient(from 0deg, #0c0c18, #151530, #0c0c18, #151530);
+  --pl-icon-vinyl-border: rgba(100,150,255,0.2);
+  --pl-icon-dot: #1a3a8f;
+  --pl-btn-bg: #040810;
+  --pl-btn-border: #0f2040;
+  --pl-btn-fill: #4070cc;
+  --del-stroke: #6a3a3a;
+  --shadow-panel: 0 0 60px rgba(0,120,255,0.08), inset 0 0 40px rgba(0,60,180,0.04);
+  --shadow-label: 0 0 14px rgba(50,100,255,0.2);
+  --shadow-axle: 0 0 6px rgba(80,130,255,0.4);
+  --shadow-pivot: 0 0 12px rgba(60,120,255,0.3);
+  --shadow-head: 0 0 10px rgba(60,130,255,0.4);
+  --shadow-needle: 0 0 6px rgba(200,100,255,0.5);
+  --shadow-prog: 0 0 8px rgba(0,150,255,0.4);
+  --shadow-prog-dot: 0 0 10px rgba(0,170,255,0.8);
+  --shadow-btn: 0 0 10px rgba(0,60,180,0.1), inset 0 1px 0 rgba(60,120,255,0.1);
+  --shadow-btn-hover: 0 0 20px rgba(0,100,255,0.22);
+  --shadow-btn-active: 0 0 20px rgba(0,100,255,0.35);
+  --theme-icon-display-sun: none;
+  --theme-icon-display-moon: block;
+}
+
+/* ========== LIGHT THEME ========== */
+.light {
+  --bg-body: #e8ecf4;
+  --bg-panel: linear-gradient(145deg, #dce2ee, #d0d8e8, #e4eaf4);
+  --bg-panel-alt: linear-gradient(145deg, #d8dfe8, #cdd6e2);
+  --border-panel: #9ab0d0;
+  --border-panel-alt: #a0b4cc;
+  --border-corner: #5080bb;
+  --bg-platter: radial-gradient(circle at 50%, #c0cadd, #b0bcd5, #a8b6d0);
+  --shadow-platter: 0 0 20px rgba(0,60,150,0.1), inset 0 0 15px rgba(0,0,0,0.08);
+  --bg-vinyl: conic-gradient(from 0deg, #2a2a3a, #353548, #2a2a3a, #353548, #2a2a3a, #353548, #2a2a3a, #353548, #2a2a3a, #353548, #2a2a3a, #353548, #2a2a3a, #353548, #2a2a3a, #353548);
+  --groove-color: rgba(255,255,255,0.12);
+  --bg-label: radial-gradient(circle at 40% 35%, #4070cc, #2a50aa, #1a3a8f);
+  --border-label: #5080cc;
+  --text-label: #fff;
+  --text-label-sub: #c0d0ff;
+  --bg-axle: radial-gradient(circle at 35% 30%, #aac0ff, #5080cc, #2a4aaf);
+  --border-axle: #6090cc;
+  --arm-gradient: linear-gradient(to bottom, #5080cc, #3060aa, #5080cc);
+  --head-gradient: linear-gradient(135deg, #5090ee, #3060cc);
+  --needle-gradient: linear-gradient(to bottom, #6090dd, #aa44dd);
+  --pivot-gradient: radial-gradient(circle at 35% 30%, #80b0ff, #4070cc, #2050aa);
+  --border-pivot: #5080cc;
+  --text-header: #3060aa;
+  --text-title: #2050aa;
+  --text-sub: #5070a0;
+  --text-sys: #4060a0;
+  --text-vol: #5070a0;
+  --text-vol-val: #3060aa;
+  --dot-off: #a0b0cc;
+  --dot-on: #0080ee;
+  --prog-bg: #c0cadd;
+  --prog-fill: linear-gradient(to right, #2060cc, #0088ff, #00aaee);
+  --prog-dot: #0088ff;
+  --prog-time: #5070a0;
+  --btn-bg: linear-gradient(145deg, #d5dde8, #c8d2e0);
+  --btn-border: #9ab0cc;
+  --btn-fill: #4070aa;
+  --btn-hover-border: #3060cc;
+  --btn-hover-fill: #0080ee;
+  --btn-active-border: #0060dd;
+  --add-bg: linear-gradient(145deg, #c8d5ee, #bccae0);
+  --add-border: #6090cc;
+  --add-hover-border: #3070dd;
+  --add-text: #2060cc;
+  --input-bg: #f0f4fa;
+  --input-border: #a0b4cc;
+  --input-color: #2050aa;
+  --input-placeholder: #a0b0c8;
+  --input-focus-border: #4080dd;
+  --pl-bg: #e0e6f0;
+  --pl-border: #b0c0d8;
+  --pl-hover-border: #6090cc;
+  --pl-active-border: #2060cc;
+  --pl-active-bg: #d0daf0;
+  --pl-name: #3060aa;
+  --pl-name-active: #1a40aa;
+  --pl-id-color: #7090b8;
+  --pl-badge-bg: #d8e0ee;
+  --pl-badge-border: #a0b4cc;
+  --pl-badge-color: #5080aa;
+  --scroll-track: #dce2ee;
+  --scroll-thumb: #9ab0cc;
+  --wf-gradient: linear-gradient(to top, #4080cc, #60a0ee);
+  --wf-active-gradient: linear-gradient(to top, #3070dd, #40a0ff);
+  --scanline-color: rgba(0,80,180,0.02);
+  --vol-track: #c0cadd;
+  --vol-fill: #2060cc;
+  --vol-thumb: radial-gradient(circle at 35% 35%, #60a0ff, #2060cc);
+  --vol-thumb-border: #1060dd;
+  --counter-color: #7090b8;
+  --label-color: #5080a0;
+  --form-bg: #e8ecf4;
+  --form-border: #b0c0d8;
+  --pl-icon-bg: linear-gradient(135deg, #4070cc, #2a50aa);
+  --pl-icon-border: #5080cc;
+  --pl-icon-vinyl: conic-gradient(from 0deg, #2a2a3a, #3a3a50, #2a2a3a, #3a3a50);
+  --pl-icon-vinyl-border: rgba(255,255,255,0.25);
+  --pl-icon-dot: #5080cc;
+  --pl-btn-bg: #d8e0ee;
+  --pl-btn-border: #a0b4cc;
+  --pl-btn-fill: #3060aa;
+  --del-stroke: #cc5555;
+  --shadow-panel: 0 0 30px rgba(0,80,180,0.06), inset 0 0 20px rgba(255,255,255,0.3);
+  --shadow-label: 0 0 10px rgba(50,100,255,0.15);
+  --shadow-axle: 0 0 4px rgba(80,130,255,0.3);
+  --shadow-pivot: 0 0 8px rgba(60,120,255,0.2);
+  --shadow-head: 0 0 8px rgba(60,130,255,0.3);
+  --shadow-needle: 0 0 4px rgba(200,100,255,0.3);
+  --shadow-prog: 0 0 6px rgba(0,150,255,0.3);
+  --shadow-prog-dot: 0 0 8px rgba(0,170,255,0.5);
+  --shadow-btn: 0 2px 6px rgba(0,40,120,0.08), inset 0 1px 0 rgba(255,255,255,0.5);
+  --shadow-btn-hover: 0 0 12px rgba(0,100,255,0.15);
+  --shadow-btn-active: 0 0 14px rgba(0,100,255,0.25);
+  --theme-icon-display-sun: block;
+  --theme-icon-display-moon: none;
+}
+
+/* ========== ANIMACIONES ========== */
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+@keyframes spin-vinyl {
+  to { transform: rotate(360deg); }
+}
+@keyframes wave {
+  from { transform: scaleY(0.3); }
+  to   { transform: scaleY(1); }
+}
+
+.animate-blink       { animation: blink 1.4s ease-in-out infinite; }
+.animate-spin-vinyl  { animation: spin-vinyl 2s linear infinite; }
+.animate-wave        { animation: wave 0.8s ease-in-out infinite alternate; }
+
+/* ========== BODY ========== */
+body {
+  background-color: var(--bg-body);
+  transition: background-color 0.4s;
+}
+
+/* ========== HEADER FIJO ========== */
+.app-header {
+  background: var(--bg-body);
+  border-bottom: 1px solid var(--border-panel);
+  backdrop-filter: blur(12px);
+  transition: background 0.4s, border-color 0.4s;
+}
+
+.header-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot-on);
+  box-shadow: 0 0 8px var(--dot-on);
+  animation: blink 2s ease-in-out infinite;
+}
+
+/* ========== PANELES ========== */
+.player-panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-panel);
+  box-shadow: var(--shadow-panel);
+  transition: background 0.4s, border-color 0.4s, box-shadow 0.4s;
+}
+
+.playlist-panel {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-panel-alt);
+  min-height: 300px;
+  transition: background 0.4s, border-color 0.4s;
+}
+
+@media (min-width: 768px) {
+  .playlist-panel { min-height: 400px; }
+}
+
+/* ========== SCANLINES ========== */
+.scanlines {
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, var(--scanline-color) 2px, var(--scanline-color) 4px);
+}
+
+/* ========== TURNTABLE AREA (responsive) ========== */
+.turntable-area {
+  --tt-size: 280px; /* default móvil */
+  height: var(--tt-size);
+}
+
+@media (min-width: 480px) {
+  .turntable-area { --tt-size: 320px; }
+}
+@media (min-width: 768px) {
+  .turntable-area { --tt-size: 360px; }
+}
+@media (min-width: 1280px) {
+  .turntable-area { --tt-size: 380px; }
+}
+
+.platter-wrap {
+  width: var(--tt-size);
+  height: var(--tt-size);
+  background: var(--bg-platter);
+  box-shadow: var(--shadow-platter);
+}
+
+.vinyl-wrap {
+  width: calc(var(--tt-size) * 0.93);
+  height: calc(var(--tt-size) * 0.93);
+}
+
+.groove-ring {
+  border: 1px solid var(--groove-color);
+}
+
+.label-center {
+  width: 33%;
+  height: 33%;
+  top: 33.5%;
+  left: 33.5%;
+  border: 1px solid var(--border-label);
+}
+
+.axle-center {
+  width: 4%;
+  height: 4%;
+  top: 48%;
+  left: 48%;
+  border: 1px solid var(--border-axle);
+}
+
+/* ========== VINILO ========== */
+.vinyl-bg {
+  background: var(--bg-vinyl);
+  transition: background 0.4s;
+}
+
+.vinyl-label {
+  background: var(--bg-label);
+  border-color: var(--border-label) !important;
+  box-shadow: var(--shadow-label);
+  position: relative;
+}
+
+/* Carátula del video como fondo de la etiqueta */
+.label-cover {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  z-index: 1;
+}
+
+.label-cover.visible {
+  opacity: 1;
+}
+
+/* Overlay oscuro sobre la carátula para legibilidad del texto */
+.label-cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+/* Texto sobre la carátula */
+.vinyl-label .label-text {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
+}
+
+.vinyl-axle {
+  background: var(--bg-axle);
+  border-color: var(--border-axle) !important;
+  box-shadow: var(--shadow-axle);
+}
+
+/* ========== BRAZO TOCADISCOS (responsive) ========== */
+.tonearm-container {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  width: calc(var(--tt-size) * 0.38);
+  height: calc(var(--tt-size) * 0.38);
+  transform-origin: 85% 15%;
+  transform: rotate(0deg);
+  transition: transform 1s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 5;
+  cursor: grab;
+}
+
+@media (min-width: 480px) {
+  .tonearm-container { top: 12px; right: 20px; }
+}
+@media (min-width: 768px) {
+  .tonearm-container { top: 14px; right: 24px; }
+}
+
+.tonearm-container.dragging {
+  transition: none;
+  cursor: grabbing;
+}
+
+.tonearm-pivot {
+  background: var(--pivot-gradient);
+  box-shadow: var(--shadow-pivot);
+  border-color: var(--border-pivot) !important;
+}
+
+.tonearm-arm {
+  position: absolute;
+  top: 13%;
+  right: 12%;
+  width: 5px;
+  height: 75%;
+  background: var(--arm-gradient);
+  border-radius: 3px;
+  transform-origin: 2.5px 2.5px;
+  transform: rotate(-15deg);
+}
+
+.tonearm-head {
+  position: absolute;
+  bottom: -10px;
+  left: -6px;
+  width: 16px;
+  height: 10px;
+  background: var(--head-gradient);
+  border-radius: 3px;
+  box-shadow: var(--shadow-head);
+}
+
+.tonearm-needle {
+  position: absolute;
+  bottom: -15px;
+  left: 6px;
+  width: 2px;
+  height: 8px;
+  background: var(--needle-gradient);
+  border-radius: 0 0 2px 2px;
+  box-shadow: var(--shadow-needle);
+}
+
+/* ========== BARRA DE PROGRESO ========== */
+.prog-fill {
+  background: var(--prog-fill);
+  box-shadow: var(--shadow-prog);
+  transition: width 0.5s linear;
+}
+
+.prog-fill::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--prog-dot);
+  box-shadow: var(--shadow-prog-dot);
+}
+
+.prog-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 8px;
+  color: var(--prog-time);
+}
+
+/* ========== SLIDER VOLUMEN ========== */
+.vol-slider {
+  -webkit-appearance: none;
+  height: 2px;
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+}
+
+.vol-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--vol-thumb);
+  border: 1px solid var(--vol-thumb-border);
+  box-shadow: 0 0 8px rgba(0, 130, 255, 0.6);
+  cursor: pointer;
+}
+
+/* ========== BOTONES CONTROL ========== */
+.ctrl-btn {
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  box-shadow: var(--shadow-btn);
+}
+
+.ctrl-btn:hover {
+  border-color: var(--btn-hover-border);
+  box-shadow: var(--shadow-btn-hover);
+  transform: scale(1.06);
+}
+
+.ctrl-btn:active {
+  transform: scale(0.96);
+}
+
+.ctrl-btn.active {
+  border-color: var(--btn-active-border);
+  box-shadow: var(--shadow-btn-active);
+}
+
+.ctrl-btn svg {
+  fill: var(--btn-fill);
+  transition: fill 0.15s;
+}
+
+.ctrl-btn:hover svg,
+.ctrl-btn.active svg {
+  fill: var(--btn-hover-fill);
+}
+
+/* ========== BOTON TEMA ========== */
+.theme-btn {
+  background: var(--btn-bg);
+  border: 1px solid var(--btn-border);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  transition: all 0.2s;
+}
+.theme-btn:hover {
+  border-color: var(--btn-hover-border);
+  box-shadow: var(--shadow-btn-hover);
+}
+.theme-btn .icon-sun  { display: var(--theme-icon-display-sun); }
+.theme-btn .icon-moon { display: var(--theme-icon-display-moon); }
+
+/* ========== BOTON AÑADIR ========== */
+.add-btn {
+  background: var(--add-bg);
+  border: 1px solid var(--add-border);
+  font-family: 'Orbitron', monospace;
+  color: var(--add-text);
+}
+
+.add-btn:hover {
+  border-color: var(--add-hover-border);
+  box-shadow: 0 0 14px rgba(0, 80, 255, 0.2);
+}
+
+/* ========== PLAYLIST ITEMS ========== */
+.pl-item {
+  background: var(--pl-bg);
+  border: 1px solid var(--pl-border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pl-item:hover {
+  border-color: var(--pl-hover-border);
+  box-shadow: 0 0 14px rgba(0, 60, 180, 0.14);
+}
+
+.pl-item.active {
+  border-color: var(--pl-active-border);
+  background: var(--pl-active-bg);
+  box-shadow: 0 0 18px rgba(0, 80, 220, 0.2);
+}
+
+/* ========== SCROLLBAR ========== */
+.pl-scroll::-webkit-scrollbar { width: 3px; }
+.pl-scroll::-webkit-scrollbar-track { background: var(--scroll-track); }
+.pl-scroll::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 2px; }
+
+/* ========== INPUTS ========== */
+.cyber-input {
+  width: 100%;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--input-color);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  outline: none;
+  letter-spacing: 1px;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.4s, color 0.4s;
+}
+
+.cyber-input:focus {
+  border-color: var(--input-focus-border);
+  box-shadow: 0 0 10px rgba(0, 70, 180, 0.18);
+}
+
+.cyber-input::placeholder {
+  color: var(--input-placeholder);
+}
+
+/* ========== ECUALIZADOR ========== */
+.eq-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1;
+  gap: 4px;
+}
+
+.eq-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 6px;
+  color: var(--text-sub);
+  letter-spacing: 0.5px;
+}
+
+.eq-slider {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 14px;
+  height: 44px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.eq-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 6px;
+  border-radius: 2px;
+  background: var(--dot-on);
+  box-shadow: 0 0 6px rgba(0, 130, 255, 0.4);
+  cursor: pointer;
+}
+
+.eq-slider::-webkit-slider-runnable-track {
+  width: 3px;
+  background: var(--input-border);
+  border-radius: 1px;
+}
+
+.eq-preset-btn {
+  padding: 2px 6px;
+  border: 1px solid var(--input-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-sub);
+  font-family: 'Orbitron', monospace;
+  font-size: 5px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.eq-preset-btn:hover {
+  border-color: var(--btn-hover-border);
+  color: var(--btn-hover-fill);
+}
+
+.eq-preset-btn.active {
+  border-color: var(--btn-active-border);
+  color: var(--dot-on);
+  box-shadow: 0 0 6px rgba(0, 100, 255, 0.15);
+}
+
+/* ========== VELOCIDAD ========== */
+.speed-btn {
+  flex: 1;
+  padding: 3px 0;
+  border: 1px solid var(--input-border);
+  border-radius: 4px;
+  background: var(--input-bg);
+  color: var(--text-sub);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s;
+}
+
+.speed-btn:hover {
+  border-color: var(--btn-hover-border);
+  color: var(--btn-hover-fill);
+}
+
+.speed-btn.active {
+  border-color: var(--btn-active-border);
+  background: var(--btn-bg);
+  color: var(--dot-on);
+  box-shadow: 0 0 8px rgba(0, 100, 255, 0.15);
+}
+
+/* ========== WAVEFORM BARS ========== */
+.wf-bar {
+  width: 3px;
+  border-radius: 2px;
+  background: var(--wf-gradient);
+  opacity: 0.4;
+  transition: height 0.1s ease;
+}
+
+.wf-bar.active {
+  background: var(--wf-active-gradient);
+  opacity: 1;
+  box-shadow: 0 0 4px rgba(0, 180, 255, 0.4);
+}
