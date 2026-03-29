@@ -11,8 +11,8 @@ const MAX_PLAYLISTS = 20;
 
 // ── Base de datos PostgreSQL (Neon) ───────────────────────────
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false }
+  connectionString: process.env.DATABASE_URL + (process.env.DATABASE_URL?.includes('sslmode=') ? '' : '&sslmode=verify-full'),
+  ssl: { rejectUnauthorized: true }
 });
 
 async function initDB() {
