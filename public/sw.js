@@ -1,4 +1,4 @@
-const CACHE_NAME = 'neovox-v1';
+const CACHE_NAME = 'neovox-v2';
 
 // Recursos del shell de la app (lo mínimo para funcionar offline)
 const SHELL_ASSETS = [
@@ -7,6 +7,9 @@ const SHELL_ASSETS = [
   '/style.css',
   '/app.js',
   '/logo.png',
+  '/favicon.ico',
+  '/icon-192.png',
+  '/icon-512.png',
   '/manifest.json'
 ];
 
