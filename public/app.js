@@ -226,8 +226,48 @@ function stopWatchdog() {
   if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
 }
 
+// ── Loop de silencio (iOS standalone) ──
+// iOS suspende PWAs en modo standalone aunque haya <audio> activo.
+// Un segundo <audio> con loop de silencio le indica al OS que hay un
+// "cliente de audio" permanente, evitando la suspensión.
+let silentAudio = null;
+
+function createSilentWav() {
+  const sampleRate = 8000;
+  const numSamples = sampleRate * 2; // 2 segundos
+  const headerSize = 44;
+  const dataSize = numSamples;
+  const buffer = new ArrayBuffer(headerSize + dataSize);
+  const view = new DataView(buffer);
+  const w = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+  w(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); w(8, 'WAVE');
+  w(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true); view.setUint16(32, 1, true); view.setUint16(34, 8, true);
+  w(36, 'data'); view.setUint32(40, dataSize, true);
+  for (let i = 0; i < numSamples; i++) view.setUint8(headerSize + i, 128 + (i % 3 === 0 ? 1 : 0));
+  return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+}
+
+function startSilentLoop() {
+  if (silentAudio) return;
+  try {
+    silentAudio = new Audio(createSilentWav());
+    silentAudio.loop = true;
+    silentAudio.volume = 0.01;
+    silentAudio.setAttribute('playsinline', '');
+    silentAudio.setAttribute('webkit-playsinline', '');
+    silentAudio.play().catch(() => {});
+  } catch {}
+}
+
+function stopSilentLoop() {
+  if (silentAudio) { silentAudio.pause(); silentAudio.src = ''; silentAudio = null; }
+}
+
 // ── Orquestador ──
 function startKeepAlive() {
+  startSilentLoop();
   acquireWebLock();
   acquireWakeLock();
   startSwHeartbeat();
@@ -235,6 +275,7 @@ function startKeepAlive() {
 }
 
 function stopKeepAlive() {
+  stopSilentLoop();
   releaseWebLock();
   releaseWakeLock();
   stopSwHeartbeat();
@@ -246,6 +287,7 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && isPlaying) {
     acquireWakeLock();
     if (audio.paused && !audio.ended) audio.play().catch(() => {});
+    if (silentAudio && silentAudio.paused) silentAudio.play().catch(() => {});
   }
 });
 
@@ -253,6 +295,7 @@ document.addEventListener('resume', () => {
   if (isPlaying) {
     acquireWakeLock();
     if (audio.paused && !audio.ended) audio.play().catch(() => {});
+    if (silentAudio && silentAudio.paused) silentAudio.play().catch(() => {});
   }
 });
 
@@ -642,6 +685,17 @@ audio.addEventListener('timeupdate', () => {
   tTot.textContent     = fmt(d);
   progFill.style.width = pct + '%';
   if (isPlaying) setArmProgress(pct);
+
+  // Reportar posición al compact player de la pantalla de bloqueo
+  if (d > 0 && 'mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: d,
+        playbackRate: audio.playbackRate,
+        position: Math.min(c, d)
+      });
+    } catch {}
+  }
 });
 
 // ── MediaSession API (controles de segundo plano / pantalla bloqueo) ──
@@ -663,6 +717,21 @@ function updateMediaSession(title, artist) {
   navigator.mediaSession.setActionHandler('previoustrack', () => { loadTrack(currentIndex - 1); });
   navigator.mediaSession.setActionHandler('nexttrack', () => { loadTrack(currentIndex + 1); });
   navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); audio.currentTime = 0; doStop(); });
+
+  // Seek desde pantalla de bloqueo / auriculares Bluetooth
+  navigator.mediaSession.setActionHandler('seekbackward', (details) => {
+    audio.currentTime = Math.max(0, audio.currentTime - (details.seekOffset || 10));
+  });
+  navigator.mediaSession.setActionHandler('seekforward', (details) => {
+    audio.currentTime = Math.min(audio.duration || 0, audio.currentTime + (details.seekOffset || 10));
+  });
+  navigator.mediaSession.setActionHandler('seekto', (details) => {
+    if (details.fastSeek && 'fastSeek' in audio) {
+      audio.fastSeek(details.seekTime);
+    } else {
+      audio.currentTime = details.seekTime;
+    }
+  });
 }
 
 // ── Carátula del vinilo ─────────────────────────────────────────
@@ -935,6 +1004,10 @@ window.addEventListener('appinstalled', () => {
 // ── Init ───────────────────────────────────────────────────────
 async function initApp() {
   addLogoutButton();
+  // Solicitar almacenamiento persistente (evita que el navegador borre el cache)
+  if (navigator.storage?.persist) {
+    navigator.storage.persist().catch(() => {});
+  }
   await registerVisit();
   await Promise.all([loadFromAPI(), loadStats()]);
   buildWf();
