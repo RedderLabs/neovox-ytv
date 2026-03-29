@@ -8,6 +8,77 @@ let bars      = [];
 let waveTimer = null;
 let progTimer = null;
 
+// ── Keep-alive: <audio> silencioso para evitar suspensión en segundo plano ──
+// Un elemento <audio> real con loop es más fiable que AudioContext en móvil,
+// porque el navegador lo asocia a MediaSession y no lo suspende.
+let keepAliveAudio = null;
+
+function createSilentAudio() {
+  // WAV mínimo: 1 segundo de silencio, mono, 8kHz, 8-bit
+  // Generado inline para no depender de un archivo externo
+  const sampleRate = 8000;
+  const numSamples = sampleRate; // 1 segundo
+  const headerSize = 44;
+  const dataSize = numSamples;
+  const buffer = new ArrayBuffer(headerSize + dataSize);
+  const view = new DataView(buffer);
+
+  // RIFF header
+  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
+  writeStr(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeStr(8, 'WAVE');
+  // fmt chunk
+  writeStr(12, 'fmt ');
+  view.setUint32(16, 16, true);       // chunk size
+  view.setUint16(20, 1, true);        // PCM
+  view.setUint16(22, 1, true);        // mono
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate, true); // byte rate
+  view.setUint16(32, 1, true);        // block align
+  view.setUint16(34, 8, true);        // bits per sample
+  // data chunk
+  writeStr(36, 'data');
+  view.setUint32(40, dataSize, true);
+  // Silencio: 128 = punto medio en 8-bit unsigned PCM
+  for (let i = 0; i < numSamples; i++) view.setUint8(headerSize + i, 128);
+
+  const blob = new Blob([buffer], { type: 'audio/wav' });
+  return URL.createObjectURL(blob);
+}
+
+function startKeepAlive() {
+  if (keepAliveAudio) return;
+  try {
+    keepAliveAudio = new Audio(createSilentAudio());
+    keepAliveAudio.loop = true;
+    keepAliveAudio.volume = 0.01;
+    keepAliveAudio.play().catch(() => {});
+  } catch {}
+}
+
+function stopKeepAlive() {
+  if (keepAliveAudio) {
+    keepAliveAudio.pause();
+    keepAliveAudio.src = '';
+    keepAliveAudio = null;
+  }
+}
+
+// Reanudar reproducción si el navegador la pausó al volver de segundo plano
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && isPlaying && ytReady && ytPlayer) {
+    try {
+      const state = ytPlayer.getPlayerState();
+      if (state === 2) ytPlayer.playVideo();
+    } catch {}
+  }
+  // Reactivar audio silencioso si fue suspendido
+  if (keepAliveAudio && keepAliveAudio.paused && isPlaying) {
+    keepAliveAudio.play().catch(() => {});
+  }
+});
+
 // ── Referencias DOM ────────────────────────────────────────────
 const vinyl    = document.getElementById('vinyl');
 const tonearm  = document.getElementById('tonearm');
@@ -98,7 +169,7 @@ function renderList() {
 
   if (!playlists.length) {
     plList.innerHTML = `
-      <div style="text-align:center;padding:40px 20px;font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--pl-id-color);letter-spacing:2px;line-height:2.2">
+      <div style="text-align:center;padding:40px 20px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--pl-id-color);letter-spacing:2px;line-height:2.2">
         · VAULT VACÍA ·<br>AÑADE TU PRIMERA PLAYLIST
       </div>`;
     return;
@@ -116,10 +187,10 @@ function renderList() {
         </div>
       </div>
       <div style="flex:1;min-width:0">
-        <div style="font-size:9px;letter-spacing:1px;color:${isActive ? 'var(--pl-name-active)' : 'var(--pl-name)'};font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pl.name}</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:7px;color:var(--pl-id-color);letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pl.ytId}</div>
+        <div style="font-size:12px;letter-spacing:1px;color:${isActive ? 'var(--pl-name-active)' : 'var(--pl-name)'};font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pl.name}</div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--pl-id-color);letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pl.ytId}</div>
         <div style="margin-top:3px">
-          <span style="font-size:6px;letter-spacing:1px;color:var(--pl-badge-color);background:var(--pl-badge-bg);border:1px solid var(--pl-badge-border);border-radius:3px;padding:1px 5px">YT PLAYLIST</span>
+          <span style="font-size:9px;letter-spacing:1px;color:var(--pl-badge-color);background:var(--pl-badge-bg);border:1px solid var(--pl-badge-border);border-radius:3px;padding:2px 6px">YT PLAYLIST</span>
         </div>
       </div>
       <div style="display:flex;gap:5px;flex-shrink:0">
@@ -448,6 +519,7 @@ function clearCover() {
 // ── Acciones play / pause / stop ───────────────────────────────
 function doPlay() {
   isPlaying = true;
+  startKeepAlive();
   vinyl.classList.add('animate-spin-vinyl');
   try {
     const c = ytPlayer.getCurrentTime() || 0;
@@ -504,6 +576,7 @@ function doPause() {
 
 function doStop() {
   isPlaying = false;
+  stopKeepAlive();
   vinyl.classList.remove('animate-spin-vinyl');
   setArmRest();
   clearCover();
@@ -657,9 +730,67 @@ volSl.addEventListener('input', () => {
   if (ytReady && ytPlayer) try { ytPlayer.setVolume(parseInt(v)); } catch {}
 });
 
+// ── Stats / contador de visitas ────────────────────────────────
+async function registerVisit() {
+  try { await fetch('/api/visit', { method: 'POST' }); } catch {}
+}
+
+async function loadStats() {
+  try {
+    const res = await fetch('/api/stats');
+    if (!res.ok) return;
+    const s = await res.json();
+    document.getElementById('statTotal').textContent = s.totalVisits.toLocaleString();
+    document.getElementById('statUnique').textContent = s.uniqueUsers.toLocaleString();
+    document.getElementById('statToday').textContent = s.todayVisits.toLocaleString();
+    const d = new Date(s.launchedAt);
+    document.getElementById('statSince').textContent = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+  } catch {}
+}
+
+// ── PWA Install ───────────────────────────────────────────────
+let deferredInstallPrompt = null;
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  installBtn.style.display = 'flex';
+});
+
+// iOS: no dispara beforeinstallprompt, mostrar indicación manual
+const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+if (isIos && !isStandalone) {
+  installBtn.style.display = 'flex';
+}
+
+installBtn.addEventListener('click', async () => {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (outcome === 'accepted') {
+      installBtn.style.display = 'none';
+      setMsg('APP INSTALADA');
+    }
+    deferredInstallPrompt = null;
+  } else if (isIos) {
+    setMsg('PULSA COMPARTIR > AÑADIR A PANTALLA DE INICIO');
+  }
+});
+
+// Ocultar si ya está instalada
+window.addEventListener('appinstalled', () => {
+  installBtn.style.display = 'none';
+  deferredInstallPrompt = null;
+  setMsg('NEOVOX INSTALADA CORRECTAMENTE');
+});
+
 // ── Init ───────────────────────────────────────────────────────
 (async () => {
-  await loadFromAPI();
+  await registerVisit();
+  await Promise.all([loadFromAPI(), loadStats()]);
   buildWf();
   setArmRest();
   updateDots('stopped');

@@ -19,6 +19,26 @@ db.exec(`
   )
 `);
 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS visits (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip        TEXT NOT NULL,
+    userAgent TEXT,
+    visited   INTEGER NOT NULL
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS stats (
+    key   TEXT PRIMARY KEY,
+    value INTEGER NOT NULL DEFAULT 0
+  )
+`);
+
+// Inicializar contadores si no existen
+db.prepare(`INSERT OR IGNORE INTO stats (key, value) VALUES ('total_visits', 0)`).run();
+db.prepare(`INSERT OR IGNORE INTO stats (key, value) VALUES ('launched', ?)`).run(Date.now());
+
 // ── Middleware ──────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -78,6 +98,44 @@ app.delete('/api/playlists/:id', (req, res) => {
       return res.status(404).json({ error: 'Playlist no encontrada' });
     }
     res.status(204).end();
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/visit — registrar visita
+app.post('/api/visit', (req, res) => {
+  try {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket.remoteAddress || 'unknown';
+    const userAgent = req.headers['user-agent'] || '';
+
+    // Incrementar total
+    db.prepare('UPDATE stats SET value = value + 1 WHERE key = ?').run('total_visits');
+
+    // Registrar visita
+    db.prepare('INSERT INTO visits (ip, userAgent, visited) VALUES (?, ?, ?)').run(ip, userAgent, Date.now());
+
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/stats — obtener estadísticas
+app.get('/api/stats', (req, res) => {
+  try {
+    const total = db.prepare('SELECT value FROM stats WHERE key = ?').get('total_visits')?.value || 0;
+    const launched = db.prepare('SELECT value FROM stats WHERE key = ?').get('launched')?.value || Date.now();
+    const uniqueIps = db.prepare('SELECT COUNT(DISTINCT ip) AS c FROM visits').get().c;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const todayVisits = db.prepare('SELECT COUNT(*) AS c FROM visits WHERE visited >= ?').get(today.getTime()).c;
+
+    res.json({
+      totalVisits: total,
+      uniqueUsers: uniqueIps,
+      todayVisits,
+      launchedAt: launched
+    });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

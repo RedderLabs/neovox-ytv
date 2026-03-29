@@ -1,0 +1,80 @@
+========================================
+  NEOVOX YT-V · GUÍA DE DEPLOY
+  Repo: https://github.com/RedderLabs/neovox-ytv
+========================================
+
+── LOCAL ──────────────────────────────
+
+  # Instalar dependencias
+  npm install
+
+  # Desarrollo (auto-restart con nodemon)
+  npm run dev
+
+  # Producción local
+  npm start
+
+  # Abrir en navegador
+  http://localhost:3000
+
+── DOCKER LOCAL ───────────────────────
+
+  # Construir imagen
+  docker build -t neovox-ytv .
+
+  # Ejecutar contenedor
+  docker run -d -p 3000:3000 -v neovox-data:/app/data --name neovox neovox-ytv
+
+  # Ver logs
+  docker logs -f neovox
+
+  # Parar / eliminar
+  docker stop neovox && docker rm neovox
+
+── GIT / GITHUB ───────────────────────
+
+  # Subir cambios
+  git add .
+  git commit -m "descripcion del cambio"
+  git push origin main
+
+── RENDER (render.com) ────────────────
+
+  Opción A: Blueprint (automático)
+    1. Dashboard > New > Blueprint
+    2. Conectar repo RedderLabs/neovox-ytv
+    3. Render lee render.yaml y configura todo
+
+  Opción B: Manual
+    1. Dashboard > New > Web Service
+    2. Conectar repo RedderLabs/neovox-ytv
+    3. Runtime: Docker
+    4. Plan: Free
+    5. Añadir disco:
+       - Mount path: /app/data
+       - Size: 1 GB
+    6. Variables de entorno:
+       NODE_ENV=production
+       HOST=0.0.0.0
+       PORT=3000
+
+  Redeploy manual:
+    - Dashboard > neovox-ytv > Manual Deploy > Deploy latest commit
+
+  Render redeploya automáticamente con cada push a main.
+
+── DOCKER HUB (opcional) ──────────────
+
+  # Login
+  docker login -u redderlabs
+
+  # Construir y push
+  docker build -t topgambajrjdeveloper/neovox-ytv:latest .
+  docker push topgambajrjdeveloper/neovox-ytv:latest
+
+── NOTAS ──────────────────────────────
+
+  - SQLite se guarda en /app/data/neovox.db
+  - El disco de Render persiste la DB entre deploys
+  - Max 20 playlists (límite en server.js)
+  - Puerto por defecto: 3000 (configurable con env PORT)

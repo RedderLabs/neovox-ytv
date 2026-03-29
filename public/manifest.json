@@ -1,0 +1,19 @@
+{
+  "name": "NEOVOX YT-V · Tocadiscos Futurista",
+  "short_name": "NEOVOX",
+  "description": "Reproductor de playlists de YouTube con estilo tocadiscos futurista",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#050810",
+  "theme_color": "#050810",
+  "categories": ["music", "entertainment"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

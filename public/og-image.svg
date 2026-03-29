@@ -1,0 +1,96 @@
+<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#050810"/>
+      <stop offset="100%" style="stop-color:#0a1530"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="40%">
+      <stop offset="0%" style="stop-color:#0060cc;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#050810;stop-opacity:0"/>
+    </radialGradient>
+    <linearGradient id="vinyl-g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0c0c18"/>
+      <stop offset="50%" style="stop-color:#151530"/>
+      <stop offset="100%" style="stop-color:#0c0c18"/>
+    </linearGradient>
+    <radialGradient id="label-g" cx="40%" cy="35%" r="50%">
+      <stop offset="0%" style="stop-color:#1a3a8f"/>
+      <stop offset="100%" style="stop-color:#071540"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#glow)"/>
+
+  <!-- Border lines -->
+  <rect x="30" y="30" width="1140" height="570" rx="20" fill="none" stroke="#1a3a6e" stroke-width="1" opacity="0.5"/>
+
+  <!-- Corner accents -->
+  <path d="M50 50 L50 80 M50 50 L80 50" stroke="#2060cc" stroke-width="2" fill="none"/>
+  <path d="M1150 50 L1150 80 M1150 50 L1120 50" stroke="#2060cc" stroke-width="2" fill="none"/>
+  <path d="M50 580 L50 550 M50 580 L80 580" stroke="#2060cc" stroke-width="2" fill="none"/>
+  <path d="M1150 580 L1150 550 M1150 580 L1120 580" stroke="#2060cc" stroke-width="2" fill="none"/>
+
+  <!-- Vinyl disc -->
+  <circle cx="350" cy="315" r="180" fill="url(#vinyl-g)" stroke="#1a3060" stroke-width="1"/>
+  <!-- Grooves -->
+  <circle cx="350" cy="315" r="160" fill="none" stroke="rgba(100,150,255,0.08)" stroke-width="0.5"/>
+  <circle cx="350" cy="315" r="140" fill="none" stroke="rgba(100,150,255,0.08)" stroke-width="0.5"/>
+  <circle cx="350" cy="315" r="120" fill="none" stroke="rgba(100,150,255,0.08)" stroke-width="0.5"/>
+  <circle cx="350" cy="315" r="100" fill="none" stroke="rgba(100,150,255,0.08)" stroke-width="0.5"/>
+  <circle cx="350" cy="315" r="80" fill="none" stroke="rgba(100,150,255,0.08)" stroke-width="0.5"/>
+  <!-- Label -->
+  <circle cx="350" cy="315" r="50" fill="url(#label-g)" stroke="#2a4aaf" stroke-width="1"/>
+  <text x="350" y="310" text-anchor="middle" font-family="monospace" font-size="10" font-weight="bold" fill="#88aaff" letter-spacing="2">CYBER</text>
+  <text x="350" y="328" text-anchor="middle" font-family="monospace" font-size="9" fill="#4466cc">33 RPM</text>
+  <!-- Axle -->
+  <circle cx="350" cy="315" r="5" fill="#2a4aaf" stroke="#4060af" stroke-width="1"/>
+
+  <!-- Tonearm -->
+  <line x1="530" y1="140" x2="430" y2="260" stroke="#3060af" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="530" cy="140" r="8" fill="#1a3a8f" stroke="#3060af" stroke-width="1"/>
+  <rect x="422" y="258" width="14" height="8" rx="2" fill="#4080ff"/>
+  <line x1="429" y1="266" x2="429" y2="274" stroke="#cc44ff" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Text -->
+  <text x="700" y="240" font-family="monospace" font-size="52" font-weight="900" fill="#88aaff" letter-spacing="8">NEOVOX</text>
+  <text x="700" y="290" font-family="monospace" font-size="22" fill="#2a4a80" letter-spacing="6">YT-V · TOCADISCOS FUTURISTA</text>
+
+  <!-- Waveform bars -->
+  <g opacity="0.6">
+    <rect x="700" y="340" width="4" height="20" rx="1" fill="#0088ff"/>
+    <rect x="710" y="330" width="4" height="30" rx="1" fill="#0088ff"/>
+    <rect x="720" y="325" width="4" height="35" rx="1" fill="#00aaff"/>
+    <rect x="730" y="320" width="4" height="40" rx="1" fill="#00aaff"/>
+    <rect x="740" y="310" width="4" height="50" rx="1" fill="#00ccff"/>
+    <rect x="750" y="315" width="4" height="45" rx="1" fill="#00aaff"/>
+    <rect x="760" y="325" width="4" height="35" rx="1" fill="#0088ff"/>
+    <rect x="770" y="320" width="4" height="40" rx="1" fill="#00aaff"/>
+    <rect x="780" y="310" width="4" height="50" rx="1" fill="#00ccff"/>
+    <rect x="790" y="318" width="4" height="42" rx="1" fill="#00aaff"/>
+    <rect x="800" y="330" width="4" height="30" rx="1" fill="#0088ff"/>
+    <rect x="810" y="322" width="4" height="38" rx="1" fill="#00aaff"/>
+    <rect x="820" y="335" width="4" height="25" rx="1" fill="#0060cc"/>
+    <rect x="830" y="328" width="4" height="32" rx="1" fill="#0088ff"/>
+    <rect x="840" y="315" width="4" height="45" rx="1" fill="#00aaff"/>
+    <rect x="850" y="325" width="4" height="35" rx="1" fill="#0088ff"/>
+    <rect x="860" y="338" width="4" height="22" rx="1" fill="#0060cc"/>
+  </g>
+
+  <!-- Description -->
+  <text x="700" y="420" font-family="monospace" font-size="14" fill="#3060aa" letter-spacing="2">REPRODUCE TUS PLAYLISTS DE YOUTUBE</text>
+  <text x="700" y="445" font-family="monospace" font-size="14" fill="#3060aa" letter-spacing="2">CON ESTILO VINTAGE FUTURISTA</text>
+
+  <!-- Features -->
+  <circle cx="710" cy="485" r="3" fill="#00aaff"/>
+  <text x="722" y="489" font-family="monospace" font-size="12" fill="#4a6a9a" letter-spacing="1">Aguja interactiva draggable</text>
+  <circle cx="710" cy="510" r="3" fill="#00aaff"/>
+  <text x="722" y="514" font-family="monospace" font-size="12" fill="#4a6a9a" letter-spacing="1">Ecualizador + control velocidad</text>
+  <circle cx="710" cy="535" r="3" fill="#00aaff"/>
+  <text x="722" y="539" font-family="monospace" font-size="12" fill="#4a6a9a" letter-spacing="1">Caratulas + modo claro/oscuro</text>
+
+  <!-- RedderLabs -->
+  <circle cx="705" cy="580" r="3" fill="#00aaff" opacity="0.6"/>
+  <text x="716" y="584" font-family="monospace" font-size="11" fill="#2a4a80" letter-spacing="2">REDDERLABS.COM</text>
+</svg>

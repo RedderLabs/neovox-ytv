@@ -446,7 +446,7 @@ body {
 
 .prog-time {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 8px;
+  font-size: 11px;
   color: var(--prog-time);
 }
 
@@ -506,6 +506,36 @@ body {
 .ctrl-btn:hover svg,
 .ctrl-btn.active svg {
   fill: var(--btn-hover-fill);
+}
+
+/* ========== BOTON INSTALAR PWA ========== */
+.install-btn {
+  background: var(--add-bg);
+  border: 1px solid var(--add-border);
+  border-radius: 6px;
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  height: 22px;
+  transition: all 0.2s;
+  animation: blink 2s ease-in-out 3;
+}
+.install-btn[style*="flex"] { display: flex !important; }
+.install-btn:hover {
+  border-color: var(--add-hover-border);
+  box-shadow: 0 0 14px rgba(0, 80, 255, 0.25);
+}
+.install-btn:hover svg { stroke: var(--btn-hover-fill); }
+.install-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  color: var(--add-text);
+}
+@media (max-width: 400px) {
+  .install-label { display: none; }
 }
 
 /* ========== BOTON TEMA ========== */
@@ -577,10 +607,10 @@ body {
   background: var(--input-bg);
   border: 1px solid var(--input-border);
   border-radius: 8px;
-  padding: 8px 12px;
+  padding: 10px 14px;
   color: var(--input-color);
   font-family: 'Share Tech Mono', monospace;
-  font-size: 11px;
+  font-size: 13px;
   outline: none;
   letter-spacing: 1px;
   transition: border-color 0.2s, box-shadow 0.2s, background 0.4s, color 0.4s;
@@ -606,7 +636,7 @@ body {
 
 .eq-label {
   font-family: 'Share Tech Mono', monospace;
-  font-size: 6px;
+  font-size: 9px;
   color: var(--text-sub);
   letter-spacing: 0.5px;
 }
@@ -639,13 +669,13 @@ body {
 }
 
 .eq-preset-btn {
-  padding: 2px 6px;
+  padding: 3px 8px;
   border: 1px solid var(--input-border);
   border-radius: 3px;
   background: transparent;
   color: var(--text-sub);
   font-family: 'Orbitron', monospace;
-  font-size: 5px;
+  font-size: 8px;
   letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.15s;
@@ -665,13 +695,13 @@ body {
 /* ========== VELOCIDAD ========== */
 .speed-btn {
   flex: 1;
-  padding: 3px 0;
+  padding: 4px 0;
   border: 1px solid var(--input-border);
   border-radius: 4px;
   background: var(--input-bg);
   color: var(--text-sub);
   font-family: 'Share Tech Mono', monospace;
-  font-size: 7px;
+  font-size: 10px;
   letter-spacing: 0.5px;
   cursor: pointer;
   text-align: center;
@@ -688,6 +718,126 @@ body {
   background: var(--btn-bg);
   color: var(--dot-on);
   box-shadow: 0 0 8px rgba(0, 100, 255, 0.15);
+}
+
+/* ========== FOOTER / GUÍA ========== */
+.guide-panel {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-panel-alt);
+}
+
+.guide-section {
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+}
+
+.guide-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--dot-on);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--input-border);
+}
+
+.guide-steps {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 0;
+}
+
+.guide-steps li {
+  counter-increment: step;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--text-sub);
+  line-height: 1.9;
+  padding-left: 20px;
+  position: relative;
+}
+
+.guide-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--dot-on);
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 50%;
+  border: 1px solid var(--btn-border);
+  top: 2px;
+}
+
+.guide-steps strong {
+  color: var(--text-title);
+}
+
+.guide-steps code {
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: var(--form-bg);
+  border: 1px solid var(--input-border);
+  color: var(--dot-on);
+}
+
+.guide-tip {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--text-sub);
+  background: var(--form-bg);
+  border-left: 2px solid var(--dot-on);
+}
+
+.guide-tip strong {
+  color: var(--dot-on);
+}
+
+.footer-link {
+  color: var(--dot-on);
+  text-decoration: none;
+  font-weight: 700;
+  transition: opacity 0.2s;
+}
+
+.footer-link:hover {
+  opacity: 0.7;
+  text-decoration: underline;
+}
+
+/* ========== STATS ========== */
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.stat-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--dot-on);
+  letter-spacing: 1px;
+}
+
+.stat-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--text-sub);
+  letter-spacing: 1.5px;
 }
 
 /* ========== WAVEFORM BARS ========== */
