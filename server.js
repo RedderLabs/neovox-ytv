@@ -273,82 +273,74 @@ app.get('/api/yt/audio/:videoId', async (req, res) => {
   const { videoId } = req.params;
   const url = `https://www.youtube.com/watch?v=${videoId}`;
 
+  console.log(`NEOVOX: Audio request para ${videoId}`);
+
   try {
-    // Obtener info del formato de audio
+    // Obtener info del video
     let info;
     const cached = getCachedUrl(videoId);
     if (cached) {
       info = cached.info;
+      console.log(`NEOVOX: Info de cache para ${videoId}`);
     } else {
       info = await ytdl.getInfo(url);
       urlCache.set(videoId, { info, ts: Date.now() });
+      console.log(`NEOVOX: Info obtenida para ${videoId}, formatos: ${info.formats.length}`);
     }
 
-    // Preferir m4a/mp4 para máxima compatibilidad con iOS Safari
-    const format = ytdl.chooseFormat(info.formats, {
-      quality: 'highestaudio',
-      filter: f => f.hasAudio && !f.hasVideo
-    });
+    // Filtrar formatos de solo audio disponibles
+    const audioFormats = info.formats.filter(f => f.hasAudio && !f.hasVideo);
+    console.log(`NEOVOX: ${audioFormats.length} formatos audio-only encontrados`);
+
+    if (!audioFormats.length) {
+      // Fallback: usar cualquier formato con audio
+      const anyAudio = info.formats.filter(f => f.hasAudio);
+      console.log(`NEOVOX: Fallback - ${anyAudio.length} formatos con audio`);
+      if (!anyAudio.length) {
+        return res.status(404).json({ error: 'Sin formato de audio disponible' });
+      }
+    }
+
+    // Seleccionar formato: preferir m4a > webm > cualquiera
+    let format = audioFormats.find(f => f.mimeType?.includes('mp4'))
+              || audioFormats.find(f => f.mimeType?.includes('webm'))
+              || audioFormats[0]
+              || info.formats.find(f => f.hasAudio);
 
     if (!format) {
       return res.status(404).json({ error: 'No se encontró formato de audio' });
     }
 
-    const contentLength = parseInt(format.contentLength || 0);
-    const mimeType = format.mimeType?.split(';')[0] || 'audio/webm';
+    console.log(`NEOVOX: Formato seleccionado: ${format.mimeType}, quality: ${format.audioBitrate || '?'}kbps, size: ${format.contentLength || '?'}`);
 
-    // Soporte para Range requests (necesario para seeking en <audio>)
-    const rangeHeader = req.headers.range;
+    const mimeType = format.mimeType?.split(';')[0] || 'audio/mp4';
 
-    if (rangeHeader && contentLength) {
-      const parts = rangeHeader.replace(/bytes=/, '').split('-');
-      const start = parseInt(parts[0], 10);
-      const end = parts[1] ? parseInt(parts[1], 10) : contentLength - 1;
-      const chunkSize = end - start + 1;
-
-      res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${contentLength}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunkSize,
-        'Content-Type': mimeType,
-        'Cache-Control': 'public, max-age=3600'
-      });
-
-      const stream = ytdl.downloadFromInfo(info, {
-        format,
-        range: { start, end }
-      });
-
-      stream.on('error', err => {
-        console.error('NEOVOX: Stream error (range):', err.message);
-        if (!res.headersSent) res.status(500).end();
-        else res.end();
-      });
-      stream.pipe(res);
-
-    } else {
-      // Sin Range — enviar completo
-      const headers = {
-        'Content-Type': mimeType,
-        'Accept-Ranges': 'bytes',
-        'Cache-Control': 'public, max-age=3600'
-      };
-      if (contentLength) headers['Content-Length'] = contentLength;
-      res.writeHead(200, headers);
-
-      const stream = ytdl.downloadFromInfo(info, { format });
-
-      stream.on('error', err => {
-        console.error('NEOVOX: Stream error:', err.message);
-        if (!res.headersSent) res.status(500).end();
-        else res.end();
-      });
-      stream.pipe(res);
+    // Stream directo sin Range (más simple y robusto)
+    res.setHeader('Content-Type', mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    res.setHeader('Accept-Ranges', 'none');
+    if (format.contentLength) {
+      res.setHeader('Content-Length', format.contentLength);
     }
+
+    const stream = ytdl.downloadFromInfo(info, { format });
+
+    stream.on('error', err => {
+      console.error(`NEOVOX: Stream error para ${videoId}:`, err.message);
+      if (!res.headersSent) res.status(500).end();
+      else res.end();
+    });
+
+    req.on('close', () => {
+      stream.destroy();
+    });
+
+    stream.pipe(res);
+
   } catch (e) {
-    console.error('NEOVOX: Error en audio proxy:', e.message);
+    console.error(`NEOVOX: Error audio proxy ${videoId}:`, e.message);
     if (!res.headersSent) {
-      res.status(502).json({ error: 'No se pudo obtener el audio' });
+      res.status(502).json({ error: e.message });
     }
   }
 });

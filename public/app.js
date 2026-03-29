@@ -617,24 +617,46 @@ async function loadPlaylist(id) {
 }
 
 // ── Cargar un track individual vía proxy de audio ─────────────
+let skipCount = 0; // evitar skip en cadena infinito
+
 function loadTrack(index) {
   if (!trackList.length) return;
   // Wrap around
   if (index >= trackList.length) index = 0;
   if (index < 0) index = trackList.length - 1;
+
+  // Protección: si ya saltamos demasiados tracks seguidos, parar
+  if (skipCount >= trackList.length) {
+    skipCount = 0;
+    setMsg('ERROR: NO SE PUEDE REPRODUCIR NINGÚN TRACK');
+    doStop();
+    return;
+  }
+
   currentIndex = index;
   const track = trackList[index];
 
+  tiName.textContent = track.title.toUpperCase();
+  tiSub.textContent  = `TRACK ${String(index + 1).padStart(2, '0')} / ${trackList.length}`;
+  setMsg('CARGANDO: ' + track.title.substring(0, 30) + '...');
+  updateCover(track.videoId);
+  updateMediaSession(track.title, 'YouTube Playlist');
+
+  // Configurar audio y esperar a canplay antes de reproducir
   audio.src = `/api/yt/audio/${track.videoId}`;
   audio.volume = parseInt(volSl.value) / 100;
   audio.playbackRate = currentSpeed || 1;
-  audio.load();
-  audio.play().catch(() => {});
 
-  tiName.textContent = track.title.toUpperCase();
-  tiSub.textContent  = `TRACK ${String(index + 1).padStart(2, '0')} / ${trackList.length}`;
-  updateCover(track.videoId);
-  updateMediaSession(track.title, 'YouTube Playlist');
+  const onCanPlay = () => {
+    audio.removeEventListener('canplay', onCanPlay);
+    skipCount = 0; // reset — track cargó bien
+    audio.play().catch(err => {
+      console.error('NEOVOX: Play error:', err);
+      setMsg('ERROR AL REPRODUCIR');
+    });
+  };
+  audio.addEventListener('canplay', onCanPlay);
+  audio.load();
 }
 
 // ── Eliminar playlist ──────────────────────────────────────────
@@ -980,10 +1002,14 @@ audio.addEventListener('pause', () => { if (!audio.ended) doPause(); });
 audio.addEventListener('ended', () => loadTrack(currentIndex + 1));
 audio.addEventListener('waiting', () => setMsg('BUFFERING...'));
 audio.addEventListener('canplay', () => { if (isPlaying) setMsg('▶ REPRODUCIENDO'); });
-audio.addEventListener('error', () => {
-  console.error('NEOVOX: Audio error en track', currentIndex);
-  setMsg('ERROR · SALTANDO TRACK...');
-  setTimeout(() => loadTrack(currentIndex + 1), 1500);
+audio.addEventListener('error', (e) => {
+  const track = trackList[currentIndex];
+  const errCode = audio.error?.code || '?';
+  const errMsg = audio.error?.message || 'desconocido';
+  console.error(`NEOVOX: Audio error track ${currentIndex} (${track?.videoId}): code=${errCode}, ${errMsg}`);
+  setMsg(`ERROR ${errCode} · SALTANDO TRACK...`);
+  skipCount++;
+  setTimeout(() => loadTrack(currentIndex + 1), 2000);
 });
 
 // ── Ecualizador ────────────────────────────────────────────────
