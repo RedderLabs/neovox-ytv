@@ -139,83 +139,120 @@ function addLogoutButton() {
 }
 
 // ── Estado global ──────────────────────────────────────────────
-let playlists = [];
-let activeId  = null;
-let ytPlayer  = null;
-let ytReady   = false;
-let isPlaying = false;
-let bars      = [];
-let waveTimer = null;
-let progTimer = null;
+let playlists  = [];
+let activeId   = null;
+let isPlaying  = false;
+let bars       = [];
+let waveTimer  = null;
 
-// ── Keep-alive: <audio> silencioso para evitar suspensión en segundo plano ──
-// Un elemento <audio> real con loop es más fiable que AudioContext en móvil,
-// porque el navegador lo asocia a MediaSession y no lo suspende.
-let keepAliveAudio = null;
+// ── Audio nativo (reemplaza YouTube IFrame) ───────────────────
+const audio       = document.getElementById('audioPlayer');
+let trackList     = [];   // videos de la playlist activa: [{videoId, title, duration, thumbnail}]
+let currentIndex  = 0;
 
-function createSilentAudio() {
-  // WAV mínimo: 1 segundo de silencio, mono, 8kHz, 8-bit
-  // Generado inline para no depender de un archivo externo
-  const sampleRate = 8000;
-  const numSamples = sampleRate; // 1 segundo
-  const headerSize = 44;
-  const dataSize = numSamples;
-  const buffer = new ArrayBuffer(headerSize + dataSize);
-  const view = new DataView(buffer);
+// ── Keep-alive para segundo plano (Web Lock + Wake Lock + SW heartbeat) ──
+// El <audio> nativo ya mantiene MediaSession, pero estas capas extra
+// evitan que el navegador descarte la pestaña o apague la pantalla.
 
-  // RIFF header
-  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
-  writeStr(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeStr(8, 'WAVE');
-  // fmt chunk
-  writeStr(12, 'fmt ');
-  view.setUint32(16, 16, true);       // chunk size
-  view.setUint16(20, 1, true);        // PCM
-  view.setUint16(22, 1, true);        // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate, true); // byte rate
-  view.setUint16(32, 1, true);        // block align
-  view.setUint16(34, 8, true);        // bits per sample
-  // data chunk
-  writeStr(36, 'data');
-  view.setUint32(40, dataSize, true);
-  // Silencio: 128 = punto medio en 8-bit unsigned PCM
-  for (let i = 0; i < numSamples; i++) view.setUint8(headerSize + i, 128);
+let wakeLockSentinel = null;
+let swHeartbeatTimer = null;
+let watchdogTimer = null;
 
-  const blob = new Blob([buffer], { type: 'audio/wav' });
-  return URL.createObjectURL(blob);
+// ── Web Locks API (evita discard de pestaña) ──
+let webLockHeld = false;
+
+function acquireWebLock() {
+  if (webLockHeld || !navigator.locks) return;
+  webLockHeld = true;
+  navigator.locks.request('neovox-playback-lock', () => {
+    return new Promise(resolve => { window._releaseWebLock = resolve; });
+  }).catch(() => { webLockHeld = false; });
 }
 
-function startKeepAlive() {
-  if (keepAliveAudio) return;
+function releaseWebLock() {
+  if (!webLockHeld) return;
+  webLockHeld = false;
+  if (window._releaseWebLock) { window._releaseWebLock(); window._releaseWebLock = null; }
+}
+
+// ── Wake Lock API (pantalla activa en móvil) ──
+async function acquireWakeLock() {
+  if (!('wakeLock' in navigator)) return;
   try {
-    keepAliveAudio = new Audio(createSilentAudio());
-    keepAliveAudio.loop = true;
-    keepAliveAudio.volume = 0.01;
-    keepAliveAudio.play().catch(() => {});
+    wakeLockSentinel = await navigator.wakeLock.request('screen');
+    wakeLockSentinel.addEventListener('release', () => {
+      wakeLockSentinel = null;
+      if (isPlaying) acquireWakeLock();
+    });
   } catch {}
 }
 
-function stopKeepAlive() {
-  if (keepAliveAudio) {
-    keepAliveAudio.pause();
-    keepAliveAudio.src = '';
-    keepAliveAudio = null;
-  }
+function releaseWakeLock() {
+  if (wakeLockSentinel) { wakeLockSentinel.release().catch(() => {}); wakeLockSentinel = null; }
 }
 
-// Reanudar reproducción si el navegador la pausó al volver de segundo plano
+// ── Service Worker heartbeat ──
+function startSwHeartbeat() {
+  if (swHeartbeatTimer) return;
+  swHeartbeatTimer = setInterval(() => {
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.controller.postMessage({ type: 'keepalive', ts: Date.now() });
+    }
+  }, 15000);
+}
+
+function stopSwHeartbeat() {
+  if (swHeartbeatTimer) { clearInterval(swHeartbeatTimer); swHeartbeatTimer = null; }
+}
+
+// ── Watchdog — reanuda si el sistema pausó el audio ──
+function startWatchdog() {
+  if (watchdogTimer) return;
+  let lastCheckTime = Date.now();
+  watchdogTimer = setInterval(() => {
+    const now = Date.now();
+    const elapsed = now - lastCheckTime;
+    lastCheckTime = now;
+    if (!isPlaying) return;
+    // Si pasaron más de 5s, el sistema nos suspendió
+    if (audio.paused && (elapsed > 5000 || !audio.ended)) {
+      console.log('NEOVOX: Watchdog reanudando (elapsed=' + elapsed + 'ms)');
+      audio.play().catch(() => {});
+    }
+  }, 2000);
+}
+
+function stopWatchdog() {
+  if (watchdogTimer) { clearInterval(watchdogTimer); watchdogTimer = null; }
+}
+
+// ── Orquestador ──
+function startKeepAlive() {
+  acquireWebLock();
+  acquireWakeLock();
+  startSwHeartbeat();
+  startWatchdog();
+}
+
+function stopKeepAlive() {
+  releaseWebLock();
+  releaseWakeLock();
+  stopSwHeartbeat();
+  stopWatchdog();
+}
+
+// ── Ciclo de vida: reanudar al volver de segundo plano ──
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && isPlaying && ytReady && ytPlayer) {
-    try {
-      const state = ytPlayer.getPlayerState();
-      if (state === 2) ytPlayer.playVideo();
-    } catch {}
+  if (document.visibilityState === 'visible' && isPlaying) {
+    acquireWakeLock();
+    if (audio.paused && !audio.ended) audio.play().catch(() => {});
   }
-  // Reactivar audio silencioso si fue suspendido
-  if (keepAliveAudio && keepAliveAudio.paused && isPlaying) {
-    keepAliveAudio.play().catch(() => {});
+});
+
+document.addEventListener('resume', () => {
+  if (isPlaying) {
+    acquireWakeLock();
+    if (audio.paused && !audio.ended) audio.play().catch(() => {});
   }
 });
 
@@ -355,41 +392,69 @@ function renderList() {
   });
 }
 
-// ── Cargar playlist en el player ───────────────────────────────
-function loadPlaylist(id) {
+// ── Cargar playlist desde el proxy ─────────────────────────────
+async function loadPlaylist(id) {
   const pl = playlists.find(p => p.id === id);
   if (!pl) return;
   activeId = id;
   renderList();
 
-  if (!ytReady) {
-    setMsg('API NO LISTA · ESPERA...');
-    return;
-  }
+  // Reset visual
+  isPlaying = false;
+  audio.pause();
+  vinyl.classList.remove('animate-spin-vinyl');
+  setArmRest();
+  animWf(false);
+  updateDots('stopped');
+  playBtn.classList.remove('active');
+  pauseBtn.classList.remove('active');
+  progFill.style.width = '0%';
+  tCur.textContent = '0:00';
+  tTot.textContent = '0:00';
+
+  tiName.textContent = pl.name.toUpperCase();
+  tiSub.textContent  = 'CARGANDO...';
+  setMsg('OBTENIENDO PLAYLIST...');
 
   try {
-    isPlaying = false;
-    vinyl.classList.remove('animate-spin-vinyl');
-    setArmRest();
-    animWf(false);
-    updateDots('stopped');
-    playBtn.classList.remove('active');
-    pauseBtn.classList.remove('active');
-    progFill.style.width = '0%';
-    tCur.textContent = '0:00';
-    tTot.textContent = '0:00';
-    stopProg();
+    const res = await fetch(`/api/yt/playlist/${pl.ytId}`);
+    if (!res.ok) throw new Error('Error ' + res.status);
+    const data = await res.json();
+    trackList = data.items || [];
 
-    tiName.textContent = pl.name.toUpperCase();
-    tiSub.textContent  = 'YT: ' + pl.ytId.substring(0, 18) + '...';
-    setMsg('CARGANDO PLAYLIST...');
+    if (!trackList.length) {
+      setMsg('PLAYLIST VACÍA O PRIVADA');
+      return;
+    }
 
-    ytPlayer.loadPlaylist({ listType: 'playlist', list: pl.ytId, index: 0, startSeconds: 0 });
-    ytPlayer.setVolume(parseInt(volSl.value));
+    setMsg(`${trackList.length} TRACKS CARGADOS`);
+    currentIndex = 0;
+    loadTrack(0);
   } catch (e) {
     setMsg('ERROR: ' + e.message);
     console.error('NEOVOX loadPlaylist error:', e);
   }
+}
+
+// ── Cargar un track individual vía proxy de audio ─────────────
+function loadTrack(index) {
+  if (!trackList.length) return;
+  // Wrap around
+  if (index >= trackList.length) index = 0;
+  if (index < 0) index = trackList.length - 1;
+  currentIndex = index;
+  const track = trackList[index];
+
+  audio.src = `/api/yt/audio/${track.videoId}`;
+  audio.volume = parseInt(volSl.value) / 100;
+  audio.playbackRate = currentSpeed || 1;
+  audio.load();
+  audio.play().catch(() => {});
+
+  tiName.textContent = track.title.toUpperCase();
+  tiSub.textContent  = `TRACK ${String(index + 1).padStart(2, '0')} / ${trackList.length}`;
+  updateCover(track.videoId);
+  updateMediaSession(track.title, 'YouTube Playlist');
 }
 
 // ── Eliminar playlist ──────────────────────────────────────────
@@ -535,23 +600,19 @@ function onDragEnd() {
   document.removeEventListener('touchend', onDragEnd);
 
   // Soltó sobre el disco: reproducir desde esa posición
-  if (dragAngle >= ARM_START && activeId && ytReady) {
+  if (dragAngle >= ARM_START && activeId) {
     const pct = (dragAngle - ARM_START) / (ARM_END - ARM_START) * 100;
-    try {
-      const duration = ytPlayer.getDuration() || 0;
-      if (duration > 0) {
-        ytPlayer.seekTo((pct / 100) * duration, true);
-      }
-      ytPlayer.playVideo();
-    } catch {}
+    const duration = audio.duration || 0;
+    if (duration > 0) {
+      audio.currentTime = (pct / 100) * duration;
+    }
+    audio.play().catch(() => {});
   } else {
     // Soltó fuera del disco
     if (isPlaying) {
-      try {
-        const c = ytPlayer.getCurrentTime() || 0;
-        const d = ytPlayer.getDuration() || 0;
-        setArmProgress(d > 0 ? (c / d) * 100 : 0);
-      } catch { setArmProgress(0); }
+      const c = audio.currentTime || 0;
+      const d = audio.duration || 0;
+      setArmProgress(d > 0 ? (c / d) * 100 : 0);
     } else {
       setArmRest();
     }
@@ -572,28 +633,18 @@ function updateDots(state) {
   d3.style.boxShadow  = state === 'playing' ? '0 0 7px var(--dot-on)' : 'none';
 }
 
-// ── Progreso ───────────────────────────────────────────────────
-function startProg() {
-  if (progTimer) clearInterval(progTimer);
-  progTimer = setInterval(() => {
-    if (!ytPlayer || !ytReady) return;
-    try {
-      const c = ytPlayer.getCurrentTime() || 0;
-      const d = ytPlayer.getDuration()    || 0;
-      const pct = d > 0 ? (c / d) * 100 : 0;
-      tCur.textContent     = fmt(c);
-      tTot.textContent     = fmt(d);
-      progFill.style.width = pct + '%';
-      if (isPlaying) setArmProgress(pct);
-    } catch {}
-  }, 500);
-}
+// ── Progreso (vía eventos nativos del <audio>) ────────────────
+audio.addEventListener('timeupdate', () => {
+  const c = audio.currentTime || 0;
+  const d = audio.duration || 0;
+  const pct = d > 0 ? (c / d) * 100 : 0;
+  tCur.textContent     = fmt(c);
+  tTot.textContent     = fmt(d);
+  progFill.style.width = pct + '%';
+  if (isPlaying) setArmProgress(pct);
+});
 
-function stopProg() {
-  if (progTimer) { clearInterval(progTimer); progTimer = null; }
-}
-
-// ── MediaSession API (segundo plano) ───────────────────────────
+// ── MediaSession API (controles de segundo plano / pantalla bloqueo) ──
 function updateMediaSession(title, artist) {
   if (!('mediaSession' in navigator)) return;
   const artwork = currentVideoId ? [
@@ -607,21 +658,11 @@ function updateMediaSession(title, artist) {
     album: 'NEOVOX',
     artwork
   });
-  navigator.mediaSession.setActionHandler('play', () => {
-    if (ytReady && activeId) ytPlayer.playVideo();
-  });
-  navigator.mediaSession.setActionHandler('pause', () => {
-    if (ytReady && isPlaying) ytPlayer.pauseVideo();
-  });
-  navigator.mediaSession.setActionHandler('previoustrack', () => {
-    if (ytReady && activeId) try { ytPlayer.previousVideo(); } catch {}
-  });
-  navigator.mediaSession.setActionHandler('nexttrack', () => {
-    if (ytReady && activeId) try { ytPlayer.nextVideo(); } catch {}
-  });
-  navigator.mediaSession.setActionHandler('stop', () => {
-    if (ytReady) { try { ytPlayer.stopVideo(); } catch {} doStop(); }
-  });
+  navigator.mediaSession.setActionHandler('play', () => { audio.play().catch(() => {}); });
+  navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); });
+  navigator.mediaSession.setActionHandler('previoustrack', () => { loadTrack(currentIndex - 1); });
+  navigator.mediaSession.setActionHandler('nexttrack', () => { loadTrack(currentIndex + 1); });
+  navigator.mediaSession.setActionHandler('stop', () => { audio.pause(); audio.currentTime = 0; doStop(); });
 }
 
 // ── Carátula del vinilo ─────────────────────────────────────────
@@ -665,41 +706,28 @@ function doPlay() {
   isPlaying = true;
   startKeepAlive();
   vinyl.classList.add('animate-spin-vinyl');
-  try {
-    const c = ytPlayer.getCurrentTime() || 0;
-    const d = ytPlayer.getDuration() || 0;
-    setArmProgress(d > 0 ? (c / d) * 100 : 0);
-  } catch { setArmProgress(0); }
+  const c = audio.currentTime || 0;
+  const d = audio.duration || 0;
+  setArmProgress(d > 0 ? (c / d) * 100 : 0);
   animWf(true);
   updateDots('playing');
   playBtn.classList.add('active');
   pauseBtn.classList.remove('active');
   document.getElementById('playIco').innerHTML = '<polygon points="6,3 15,9 6,15" style="fill:var(--btn-hover-fill)"/>';
-  startProg();
   setMsg('▶ REPRODUCIENDO');
 
-  let trackTitle = '';
-  try {
-    const data = ytPlayer.getVideoData();
-    if (data?.title) {
-      trackTitle = data.title;
-      tiName.textContent = trackTitle.toUpperCase();
-      const idx = ytPlayer.getPlaylistIndex?.() ?? 0;
-      tiSub.textContent = 'TRACK ' + String(idx + 1).padStart(2, '0');
-      // Carátula: texto corto en la etiqueta
-      labelText1.textContent = trackTitle.substring(0, 14).toUpperCase();
-    }
-    // Thumbnail del video como carátula del vinilo
-    if (data?.video_id) {
-      updateCover(data.video_id);
-    }
-  } catch {}
+  const track = trackList[currentIndex];
+  if (track) {
+    tiName.textContent = track.title.toUpperCase();
+    tiSub.textContent = `TRACK ${String(currentIndex + 1).padStart(2, '0')} / ${trackList.length}`;
+    labelText1.textContent = track.title.substring(0, 14).toUpperCase();
+    updateCover(track.videoId);
+  }
 
-  // Actualizar controles del sistema (segundo plano)
   if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'playing';
   }
-  updateMediaSession(trackTitle || 'NEOVOX YT-V');
+  updateMediaSession(track?.title || 'NEOVOX YT-V');
 }
 
 function doPause() {
@@ -710,7 +738,6 @@ function doPause() {
   playBtn.classList.remove('active');
   pauseBtn.classList.add('active');
   document.getElementById('playIco').innerHTML = '<polygon points="6,3 15,9 6,15"/>';
-  stopProg();
   setMsg('❚❚ PAUSA');
 
   if ('mediaSession' in navigator) {
@@ -732,7 +759,6 @@ function doStop() {
   progFill.style.width = '0%';
   tCur.textContent = '0:00';
   tTot.textContent = '0:00';
-  stopProg();
   setMsg('■ DETENIDO');
 
   if ('mediaSession' in navigator) {
@@ -740,39 +766,17 @@ function doStop() {
   }
 }
 
-// ── YouTube IFrame API ─────────────────────────────────────────
-window.onYouTubeIframeAPIReady = function () {
-  ytPlayer = new YT.Player('yt-player', {
-    height: '1',
-    width: '1',
-    playerVars: {
-      autoplay: 0,
-      controls: 0,
-      modestbranding: 1,
-      origin: location.origin
-    },
-    events: {
-      onReady: () => {
-        ytReady = true;
-        setMsg('SISTEMA LISTO · SELECCIONA UNA PLAYLIST');
-        console.log('NEOVOX: YouTube Player listo');
-      },
-      onStateChange: e => {
-        console.log('NEOVOX: YT state =', e.data);
-        if (e.data === YT.PlayerState.PLAYING)      doPlay();
-        else if (e.data === YT.PlayerState.PAUSED)   doPause();
-        else if (e.data === YT.PlayerState.ENDED)    { try { ytPlayer.nextVideo(); } catch {} }
-        else if (e.data === YT.PlayerState.BUFFERING) setMsg('BUFFERING...');
-        else if (e.data === YT.PlayerState.CUED)      setMsg('LISTO · PULSE PLAY');
-      },
-      onError: e => {
-        console.error('NEOVOX: YT error =', e.data);
-        setMsg('ERROR ' + e.data + ' · SALTANDO TRACK...');
-        setTimeout(() => { try { ytPlayer.nextVideo(); } catch {} }, 1500);
-      }
-    }
-  });
-};
+// ── Eventos del <audio> nativo ─────────────────────────────────
+audio.addEventListener('play', () => doPlay());
+audio.addEventListener('pause', () => { if (!audio.ended) doPause(); });
+audio.addEventListener('ended', () => loadTrack(currentIndex + 1));
+audio.addEventListener('waiting', () => setMsg('BUFFERING...'));
+audio.addEventListener('canplay', () => { if (isPlaying) setMsg('▶ REPRODUCIENDO'); });
+audio.addEventListener('error', () => {
+  console.error('NEOVOX: Audio error en track', currentIndex);
+  setMsg('ERROR · SALTANDO TRACK...');
+  setTimeout(() => loadTrack(currentIndex + 1), 1500);
+});
 
 // ── Ecualizador ────────────────────────────────────────────────
 const eqSliders = document.querySelectorAll('.eq-slider');
@@ -824,54 +828,51 @@ speedBtns.forEach(btn => {
     currentSpeed = speed;
     speedBtns.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    if (ytReady && ytPlayer) {
-      try { ytPlayer.setPlaybackRate(speed); } catch {}
-    }
+    audio.playbackRate = speed;
     setMsg(`VELOCIDAD: ${speed}x`);
   });
 });
 
 // ── Listeners controles ────────────────────────────────────────
 playBtn.addEventListener('click', () => {
-  if (!ytReady) { setMsg('ESPERANDO API DE YOUTUBE...'); return; }
   if (!activeId) { setMsg('SELECCIONA UNA PLAYLIST PRIMERO'); return; }
   if (isPlaying) {
-    ytPlayer.pauseVideo();
+    audio.pause();
   } else {
-    ytPlayer.playVideo();
+    audio.play().catch(() => {});
   }
 });
 
 pauseBtn.addEventListener('click', () => {
-  if (ytReady && isPlaying) ytPlayer.pauseVideo();
+  if (isPlaying) audio.pause();
 });
 
 stopBtn.addEventListener('click', () => {
-  if (!ytReady) return;
-  try { ytPlayer.stopVideo(); } catch {}
+  audio.pause();
+  audio.currentTime = 0;
   doStop();
 });
 
 prevBtn.addEventListener('click', () => {
-  if (ytReady && activeId) try { ytPlayer.previousVideo(); } catch {}
+  if (activeId && trackList.length) loadTrack(currentIndex - 1);
 });
 
 nextBtn.addEventListener('click', () => {
-  if (ytReady && activeId) try { ytPlayer.nextVideo(); } catch {}
+  if (activeId && trackList.length) loadTrack(currentIndex + 1);
 });
 
 document.getElementById('progBg').addEventListener('click', e => {
-  if (!ytReady || !isPlaying) return;
+  if (!isPlaying) return;
   const r = e.currentTarget.getBoundingClientRect();
   const ratio = (e.clientX - r.left) / r.width;
-  try { ytPlayer.seekTo(ratio * (ytPlayer.getDuration() || 0), true); } catch {}
+  audio.currentTime = ratio * (audio.duration || 0);
 });
 
 volSl.addEventListener('input', () => {
   const v = volSl.value;
   volVal.textContent = v;
   volSl.style.background = `linear-gradient(to right, var(--vol-fill) ${v}%, var(--vol-track) ${v}%)`;
-  if (ytReady && ytPlayer) try { ytPlayer.setVolume(parseInt(v)); } catch {}
+  audio.volume = parseInt(v) / 100;
 });
 
 // ── Stats / contador de visitas ────────────────────────────────
@@ -940,6 +941,8 @@ async function initApp() {
   setArmRest();
   updateDots('stopped');
   renderList();
+  setMsg('SISTEMA LISTO · SELECCIONA UNA PLAYLIST');
+  console.log('NEOVOX: Sistema listo (audio nativo)');
 }
 
 // Auto-login si ya tiene cuenta

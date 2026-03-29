@@ -112,10 +112,8 @@
     </div>
   </div>
 
-  <!-- YouTube IFrame oculto -->
-  <div id="yt-hidden" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;top:0;left:0;">
-    <div id="yt-player"></div>
-  </div>
+  <!-- Audio nativo — reproduce via proxy, funciona en segundo plano en todas las plataformas -->
+  <audio id="audioPlayer" preload="auto" playsinline webkit-playsinline></audio>
 
   <!-- Header fijo -->
   <header class="app-header fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 h-12 sm:h-14">
@@ -378,8 +376,6 @@
     </div>
   </footer>
 
-  <!-- YouTube IFrame API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
 
   <!-- Service Worker -->

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'neovox-v2';
+const CACHE_NAME = 'neovox-v3';
 
 // Recursos del shell de la app (lo mínimo para funcionar offline)
 const SHELL_ASSETS = [
@@ -31,6 +31,21 @@ self.addEventListener('activate', e => {
       ))
       .then(() => self.clients.claim())
   );
+});
+
+// ── Keep-alive: responder a heartbeats del cliente ───────────
+// Mantiene el SW activo mientras hay reproducción, lo que a su vez
+// evita que el navegador descarte la pestaña asociada.
+let lastHeartbeat = 0;
+
+self.addEventListener('message', e => {
+  if (e.data?.type === 'keepalive') {
+    lastHeartbeat = e.data.ts || Date.now();
+    // Responder para confirmar que el SW está vivo
+    if (e.source) {
+      e.source.postMessage({ type: 'keepalive-ack', ts: Date.now() });
+    }
+  }
 });
 
 // ── Fetch: network-first para API, cache-first para assets ───

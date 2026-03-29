@@ -2,6 +2,8 @@ require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const { Pool } = require('pg');
+const ytdl = require('@distube/ytdl-core');
+const ytpl = require('@distube/ytpl');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -55,6 +57,16 @@ async function initDB() {
 
 // ── Middleware ──────────────────────────────────────────────────
 app.use(express.json());
+
+// Headers para permitir reproducción en segundo plano en todas las plataformas
+app.use((req, res, next) => {
+  // Permissions-Policy: permitir autoplay, media y fullscreen (incluido iframes)
+  res.setHeader('Permissions-Policy', 'autoplay=*, fullscreen=*, picture-in-picture=*');
+  // Permitir que el iframe de YouTube reproduzca sin interacción
+  res.setHeader('Feature-Policy', "autoplay *; fullscreen *; picture-in-picture *");
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Helpers ────────────────────────────────────────────────────
@@ -210,6 +222,134 @@ app.get('/api/stats', async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ── YouTube Proxy: playlist info + audio stream ──────────────
+// Cache de URLs directas (TTL 4h) para no re-extraer en cada petición
+const urlCache = new Map();
+const URL_CACHE_TTL = 4 * 60 * 60 * 1000;
+
+function getCachedUrl(videoId) {
+  const entry = urlCache.get(videoId);
+  if (entry && Date.now() - entry.ts < URL_CACHE_TTL) return entry;
+  urlCache.delete(videoId);
+  return null;
+}
+
+// Cache de playlists (TTL 30 min)
+const playlistCache = new Map();
+const PL_CACHE_TTL = 30 * 60 * 1000;
+
+// GET /api/yt/playlist/:playlistId — devuelve lista de videos
+app.get('/api/yt/playlist/:playlistId', async (req, res) => {
+  const { playlistId } = req.params;
+  try {
+    // Check cache
+    const cached = playlistCache.get(playlistId);
+    if (cached && Date.now() - cached.ts < PL_CACHE_TTL) {
+      return res.json(cached.data);
+    }
+
+    const result = await ytpl(playlistId, { limit: 200 });
+    const items = result.items.map(item => ({
+      videoId: item.id,
+      title: item.title,
+      duration: item.durationSec || 0,
+      thumbnail: item.bestThumbnail?.url || item.thumbnails?.[0]?.url || ''
+    }));
+
+    const data = { title: result.title, items };
+    playlistCache.set(playlistId, { data, ts: Date.now() });
+    res.json(data);
+  } catch (e) {
+    console.error('NEOVOX: Error obteniendo playlist:', e.message);
+    res.status(502).json({ error: 'No se pudo obtener la playlist' });
+  }
+});
+
+// GET /api/yt/audio/:videoId — proxy de audio stream
+app.get('/api/yt/audio/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  const url = `https://www.youtube.com/watch?v=${videoId}`;
+
+  try {
+    // Obtener info del formato de audio
+    let info;
+    const cached = getCachedUrl(videoId);
+    if (cached) {
+      info = cached.info;
+    } else {
+      info = await ytdl.getInfo(url);
+      urlCache.set(videoId, { info, ts: Date.now() });
+    }
+
+    // Preferir m4a/mp4 para máxima compatibilidad con iOS Safari
+    const format = ytdl.chooseFormat(info.formats, {
+      quality: 'highestaudio',
+      filter: f => f.hasAudio && !f.hasVideo
+    });
+
+    if (!format) {
+      return res.status(404).json({ error: 'No se encontró formato de audio' });
+    }
+
+    const contentLength = parseInt(format.contentLength || 0);
+    const mimeType = format.mimeType?.split(';')[0] || 'audio/webm';
+
+    // Soporte para Range requests (necesario para seeking en <audio>)
+    const rangeHeader = req.headers.range;
+
+    if (rangeHeader && contentLength) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : contentLength - 1;
+      const chunkSize = end - start + 1;
+
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${contentLength}`,
+        'Accept-Ranges': 'bytes',
+        'Content-Length': chunkSize,
+        'Content-Type': mimeType,
+        'Cache-Control': 'public, max-age=3600'
+      });
+
+      const stream = ytdl.downloadFromInfo(info, {
+        format,
+        range: { start, end }
+      });
+
+      stream.on('error', err => {
+        console.error('NEOVOX: Stream error (range):', err.message);
+        if (!res.headersSent) res.status(500).end();
+        else res.end();
+      });
+      stream.pipe(res);
+
+    } else {
+      // Sin Range — enviar completo
+      const headers = {
+        'Content-Type': mimeType,
+        'Accept-Ranges': 'bytes',
+        'Cache-Control': 'public, max-age=3600'
+      };
+      if (contentLength) headers['Content-Length'] = contentLength;
+      res.writeHead(200, headers);
+
+      const stream = ytdl.downloadFromInfo(info, { format });
+
+      stream.on('error', err => {
+        console.error('NEOVOX: Stream error:', err.message);
+        if (!res.headersSent) res.status(500).end();
+        else res.end();
+      });
+      stream.pipe(res);
+    }
+  } catch (e) {
+    console.error('NEOVOX: Error en audio proxy:', e.message);
+    if (!res.headersSent) {
+      res.status(502).json({ error: 'No se pudo obtener el audio' });
+    }
   }
 });
 
