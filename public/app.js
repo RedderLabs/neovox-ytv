@@ -299,6 +299,143 @@ document.addEventListener('resume', () => {
   }
 });
 
+// ── Picture-in-Picture: mini-player flotante ──────────────────
+// Engaña al OS: ve un video activo en PiP → no suspende la página.
+// De paso muestra carátula + progreso en un mini-player flotante.
+const pipCanvas  = document.getElementById('pipCanvas');
+const pipVideo   = document.getElementById('pipVideo');
+const pipBtn     = document.getElementById('pipBtn');
+const pipCtx     = pipCanvas.getContext('2d');
+let pipActive    = false;
+let pipDrawTimer = null;
+let pipCoverImg  = null;
+
+// Mostrar botón solo si el navegador soporta PiP
+if (document.pictureInPictureEnabled) {
+  pipBtn.style.display = '';
+}
+
+// Dibujar frame en el canvas: carátula + título + barra de progreso
+function pipDrawFrame() {
+  const W = pipCanvas.width;
+  const H = pipCanvas.height;
+
+  // Fondo oscuro
+  pipCtx.fillStyle = '#0a0a0f';
+  pipCtx.fillRect(0, 0, W, H);
+
+  // Carátula centrada
+  if (pipCoverImg && pipCoverImg.complete && pipCoverImg.naturalWidth) {
+    const size = Math.min(W, H) * 0.55;
+    const x = (W - size) / 2;
+    const y = 20;
+    // Sombra
+    pipCtx.shadowColor = '#00f0ff44';
+    pipCtx.shadowBlur = 20;
+    pipCtx.drawImage(pipCoverImg, x, y, size, size);
+    pipCtx.shadowBlur = 0;
+  }
+
+  // Título del track
+  const track = typeof trackList !== 'undefined' && trackList[currentIndex];
+  pipCtx.fillStyle = '#00f0ff';
+  pipCtx.font = 'bold 22px Orbitron, monospace';
+  pipCtx.textAlign = 'center';
+  const title = track ? track.title.substring(0, 35).toUpperCase() : 'NEOVOX YT-V';
+  pipCtx.fillText(title, W / 2, H - 70);
+
+  // Info de track
+  pipCtx.fillStyle = '#8888aa';
+  pipCtx.font = '16px monospace';
+  if (track) {
+    pipCtx.fillText(`TRACK ${currentIndex + 1} / ${trackList.length}`, W / 2, H - 48);
+  }
+
+  // Barra de progreso
+  const d = audio.duration || 0;
+  const c = audio.currentTime || 0;
+  const pct = d > 0 ? c / d : 0;
+  const barY = H - 25;
+  const barW = W - 80;
+  const barX = 40;
+  // Fondo barra
+  pipCtx.fillStyle = '#1a1a2e';
+  pipCtx.fillRect(barX, barY, barW, 8);
+  // Progreso
+  pipCtx.fillStyle = '#00f0ff';
+  pipCtx.fillRect(barX, barY, barW * pct, 8);
+  // Glow
+  pipCtx.shadowColor = '#00f0ff';
+  pipCtx.shadowBlur = 6;
+  pipCtx.fillRect(barX, barY, barW * pct, 8);
+  pipCtx.shadowBlur = 0;
+
+  // Tiempo
+  pipCtx.fillStyle = '#aaaacc';
+  pipCtx.font = '13px monospace';
+  pipCtx.textAlign = 'left';
+  pipCtx.fillText(fmt(c), barX, barY - 5);
+  pipCtx.textAlign = 'right';
+  pipCtx.fillText(fmt(d), barX + barW, barY - 5);
+}
+
+function pipStart() {
+  if (pipActive) return;
+
+  // Conectar canvas al video via captureStream
+  const stream = pipCanvas.captureStream(30); // 30fps
+  pipVideo.srcObject = stream;
+  pipVideo.muted = true;
+  pipVideo.play().catch(() => {});
+
+  // Dibujar continuamente
+  pipDrawTimer = setInterval(pipDrawFrame, 100);
+
+  // Solicitar PiP
+  pipVideo.requestPictureInPicture().then(pipWin => {
+    pipActive = true;
+    pipBtn.classList.add('active');
+    pipWin.addEventListener('resize', () => {});
+  }).catch(err => {
+    console.error('NEOVOX: PiP error:', err);
+    clearInterval(pipDrawTimer);
+    pipDrawTimer = null;
+  });
+}
+
+function pipStop() {
+  if (!pipActive) return;
+  pipActive = false;
+  pipBtn.classList.remove('active');
+  if (document.pictureInPictureElement) {
+    document.exitPictureInPicture().catch(() => {});
+  }
+  if (pipDrawTimer) { clearInterval(pipDrawTimer); pipDrawTimer = null; }
+  pipVideo.srcObject = null;
+}
+
+// Detectar cuando el usuario cierra el PiP manualmente
+pipVideo.addEventListener('leavepictureinpicture', () => {
+  pipActive = false;
+  pipBtn.classList.remove('active');
+  if (pipDrawTimer) { clearInterval(pipDrawTimer); pipDrawTimer = null; }
+});
+
+// Botón toggle PiP
+pipBtn.addEventListener('click', () => {
+  if (pipActive) pipStop();
+  else pipStart();
+});
+
+// Actualizar la imagen de carátula para el PiP cuando cambie el track
+function pipUpdateCover(videoId) {
+  if (!videoId) return;
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = () => { pipCoverImg = img; };
+  img.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+}
+
 // ── Referencias DOM ────────────────────────────────────────────
 const vinyl    = document.getElementById('vinyl');
 const tonearm  = document.getElementById('tonearm');
@@ -743,6 +880,7 @@ let currentVideoId = null;
 function updateCover(videoId) {
   if (!videoId || videoId === currentVideoId) return;
   currentVideoId = videoId;
+  pipUpdateCover(videoId);
   // YouTube thumbnail: maxresdefault > hqdefault > 0
   const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
   // Precargar imagen para transición suave
@@ -817,6 +955,7 @@ function doPause() {
 function doStop() {
   isPlaying = false;
   stopKeepAlive();
+  pipStop();
   vinyl.classList.remove('animate-spin-vinyl');
   setArmRest();
   clearCover();

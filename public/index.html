@@ -225,6 +225,17 @@
         </button>
       </div>
 
+      <!-- PiP mini-player (mantiene la app activa en segundo plano) -->
+      <div class="flex justify-center mb-2">
+        <button class="ctrl-btn w-8 h-8" id="pipBtn" title="Mini-player flotante (PiP)" style="display:none">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--btn-fill)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="9" width="8" height="6" rx="1" fill="var(--btn-fill)" opacity="0.4"/><line x1="2" y1="21" x2="22" y2="21"/>
+          </svg>
+        </button>
+      </div>
+      <canvas id="pipCanvas" width="640" height="360" style="display:none"></canvas>
+      <video id="pipVideo" muted playsinline style="display:none"></video>
+
       <!-- Ecualizador -->
       <div class="eq-panel rounded-lg p-3 mb-3 mx-1" style="background:var(--input-bg);border:1px solid var(--input-border)">
         <div class="flex items-center justify-between mb-2">
