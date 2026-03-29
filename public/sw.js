@@ -1,4 +1,4 @@
-const CACHE_NAME = 'neovox-v4';
+const CACHE_NAME = 'neovox-v5';
 
 // Recursos del shell de la app (lo mínimo para funcionar offline)
 const SHELL_ASSETS = [

@@ -660,6 +660,77 @@ function clearCover() {
   labelText2.textContent = '33\u2153';
 }
 
+// ── Tracklist: mostrar canciones de la playlist activa ─────────
+const tracklistPanel = document.getElementById('tracklistPanel');
+const tracklistItems = document.getElementById('tracklistItems');
+const trackCount     = document.getElementById('trackCount');
+let tracklistIds     = []; // videoIds de la playlist cargada
+
+function buildTracklist() {
+  if (!ytReady || !ytPlayer) return;
+  try {
+    const ids = ytPlayer.getPlaylist();
+    if (!ids || !ids.length) return;
+    tracklistIds = ids;
+    trackCount.textContent = ids.length + ' TRACKS';
+    tracklistPanel.style.display = '';
+
+    tracklistItems.innerHTML = '';
+    ids.forEach((videoId, i) => {
+      const el = document.createElement('div');
+      el.className = 'tracklist-item';
+      el.dataset.index = i;
+      el.dataset.videoId = videoId;
+      el.innerHTML = `
+        <span class="tracklist-num">${String(i + 1).padStart(2, '0')}</span>
+        <img src="https://img.youtube.com/vi/${videoId}/default.jpg" style="width:36px;height:27px;border-radius:3px;object-fit:cover;flex-shrink:0" loading="lazy">
+        <span class="tracklist-title" id="tt-${i}">${videoId}</span>
+        <span class="tracklist-dur" id="td-${i}"></span>`;
+      el.addEventListener('click', () => {
+        try { ytPlayer.playVideoAt(i); } catch {}
+      });
+      tracklistItems.appendChild(el);
+    });
+
+    // Intentar obtener títulos vía noembed (sin API key)
+    ids.forEach((videoId, i) => {
+      fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`)
+        .then(r => r.json())
+        .then(data => {
+          const titleEl = document.getElementById('tt-' + i);
+          if (titleEl && data.title) titleEl.textContent = data.title;
+        })
+        .catch(() => {});
+    });
+  } catch {}
+}
+
+function updateTracklistActive() {
+  if (!tracklistIds.length) return;
+  try {
+    const idx = ytPlayer.getPlaylistIndex?.() ?? -1;
+    const data = ytPlayer.getVideoData();
+    // Actualizar título del track actual
+    if (data?.title && idx >= 0) {
+      const titleEl = document.getElementById('tt-' + idx);
+      if (titleEl) titleEl.textContent = data.title;
+    }
+    // Resaltar el activo
+    tracklistItems.querySelectorAll('.tracklist-item').forEach((el, i) => {
+      el.classList.toggle('active', i === idx);
+    });
+    // Scroll al track activo
+    const activeEl = tracklistItems.querySelector('.tracklist-item.active');
+    if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } catch {}
+}
+
+function clearTracklist() {
+  tracklistPanel.style.display = 'none';
+  tracklistItems.innerHTML = '';
+  tracklistIds = [];
+}
+
 // ── Acciones play / pause / stop ───────────────────────────────
 function doPlay() {
   isPlaying = true;
@@ -695,6 +766,10 @@ function doPlay() {
     }
   } catch {}
 
+  // Tracklist: construir si es la primera vez, actualizar track activo
+  if (!tracklistIds.length) buildTracklist();
+  updateTracklistActive();
+
   // Actualizar controles del sistema (segundo plano)
   if ('mediaSession' in navigator) {
     navigator.mediaSession.playbackState = 'playing';
@@ -724,6 +799,7 @@ function doStop() {
   vinyl.classList.remove('animate-spin-vinyl');
   setArmRest();
   clearCover();
+  clearTracklist();
   animWf(false);
   updateDots('stopped');
   playBtn.classList.remove('active');

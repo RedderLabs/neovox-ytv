@@ -596,6 +596,64 @@ body {
   box-shadow: 0 0 18px rgba(0, 80, 220, 0.2);
 }
 
+/* ========== TRACKLIST ========== */
+#tracklistPanel {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+}
+
+.tracklist-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--pl-name);
+  border: 1px solid transparent;
+}
+
+.tracklist-item:hover {
+  background: var(--pl-bg);
+  border-color: var(--pl-hover-border);
+}
+
+.tracklist-item.active {
+  background: var(--pl-active-bg);
+  border-color: var(--pl-active-border);
+  color: var(--pl-name-active);
+}
+
+.tracklist-num {
+  font-size: 10px;
+  color: var(--counter-color);
+  min-width: 18px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.tracklist-item.active .tracklist-num {
+  color: var(--dot-on);
+}
+
+.tracklist-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.tracklist-dur {
+  font-size: 10px;
+  color: var(--counter-color);
+  flex-shrink: 0;
+}
+
 /* ========== SCROLLBAR ========== */
 .pl-scroll::-webkit-scrollbar { width: 3px; }
 .pl-scroll::-webkit-scrollbar-track { background: var(--scroll-track); }

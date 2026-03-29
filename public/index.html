@@ -303,6 +303,15 @@
       <!-- Lista de playlists -->
       <div class="pl-scroll flex flex-col gap-2 overflow-y-auto pr-0.5" style="max-height:min(360px, 50vh)" id="plList"></div>
 
+      <!-- Tracklist de la playlist activa -->
+      <div id="tracklistPanel" style="display:none" class="mt-3 rounded-lg p-3" style="background:var(--input-bg);border:1px solid var(--input-border)">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-[10px] tracking-[2px]" style="color:var(--text-vol);font-family:'Share Tech Mono',monospace">TRACKLIST</span>
+          <span class="text-[10px] tracking-[1px]" style="color:var(--counter-color);font-family:'Share Tech Mono',monospace" id="trackCount"></span>
+        </div>
+        <div class="pl-scroll flex flex-col gap-1 overflow-y-auto pr-0.5" style="max-height:min(280px, 40vh)" id="tracklistItems"></div>
+      </div>
+
       <!-- Stats -->
       <div class="stats-bar mt-4 rounded-lg p-3 flex items-center justify-between gap-3 flex-wrap" style="background:var(--input-bg);border:1px solid var(--input-border)">
         <div class="flex items-center gap-4">
