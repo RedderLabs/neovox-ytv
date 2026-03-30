@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yte;
 import '../services/api_service.dart';
 import '../services/audio_service.dart';
 import '../models/playlist.dart';
@@ -26,6 +27,7 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
   }
 
   Future<void> _loadTracks() async {
+    // Try API first, fallback to youtube_explode_dart
     try {
       final data = await ApiService.getPlaylistItems(widget.playlist.ytId);
       if (mounted) {
@@ -37,6 +39,34 @@ class _PlaylistDetailPageState extends State<PlaylistDetailPage> {
         });
       }
     } catch (e) {
+      debugPrint('API playlist-items failed, trying youtube_explode: $e');
+      await _loadTracksClientSide();
+    }
+  }
+
+  Future<void> _loadTracksClientSide() async {
+    try {
+      final ytClient = yte.YoutubeExplode();
+      final playlist = await ytClient.playlists.get(widget.playlist.ytId);
+      final videos = await ytClient.playlists.getVideos(widget.playlist.ytId).toList();
+      ytClient.close();
+
+      if (mounted) {
+        setState(() {
+          _tracks = videos.map((v) => Track(
+            videoId: v.id.value,
+            title: v.title,
+            artist: v.author,
+            duration: v.duration ?? Duration.zero,
+            thumbnailUrl: v.thumbnails.highResUrl,
+          )).toList();
+          _thumbnail = playlist.thumbnails.highResUrl;
+          _author = playlist.author;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Client-side playlist load also failed: $e');
       if (mounted) setState(() => _loading = false);
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yte;
 import '../services/api_service.dart';
 import '../services/audio_service.dart';
 import '../models/playlist.dart';
@@ -28,6 +29,7 @@ class _LibraryPageState extends State<LibraryPage> with AutomaticKeepAliveClient
     setState(() => _loading = true);
     try {
       final data = await ApiService.getPlaylists();
+      debugPrint('LibraryPage: loaded ${data.length} playlists');
       if (mounted) {
         setState(() {
           _playlists = data.map((j) => Playlist.fromJson(j)).toList();
@@ -35,6 +37,7 @@ class _LibraryPageState extends State<LibraryPage> with AutomaticKeepAliveClient
         });
       }
     } catch (e) {
+      debugPrint('LibraryPage: error loading playlists: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
@@ -88,7 +91,19 @@ class _LibraryPageState extends State<LibraryPage> with AutomaticKeepAliveClient
       final items = (data['items'] as List).map((j) => Track.fromJson(j)).toList();
       if (items.isNotEmpty) {
         audioHandler.playQueue(items, 0);
+        return;
       }
+    } catch (_) {}
+    // Fallback: client-side
+    try {
+      final ytClient = yte.YoutubeExplode();
+      final videos = await ytClient.playlists.getVideos(pl.ytId).toList();
+      ytClient.close();
+      final items = videos.map((v) => Track(
+        videoId: v.id.value, title: v.title, artist: v.author,
+        duration: v.duration ?? Duration.zero, thumbnailUrl: v.thumbnails.highResUrl,
+      )).toList();
+      if (items.isNotEmpty) audioHandler.playQueue(items, 0);
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al cargar')));
