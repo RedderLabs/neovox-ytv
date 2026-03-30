@@ -1,1024 +1,867 @@
-// ── Auth: cuenta anónima estilo Mullvad ────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// NEOVOX Music — Modern Music App (RiMusic-style)
+// ═══════════════════════════════════════════════════════════════
+
+const API = window.location.origin;
+
+// ── State ──────────────────────────────────────────────────────
 let currentAccount = localStorage.getItem('neovox_account');
+let playlists = [];
+let queue = [];
+let queueIndex = -1;
+let isPlaying = false;
+let shuffleOn = false;
+let repeatMode = 0; // 0=off, 1=all, 2=one
+let currentTrack = null;
+let seekDragging = false;
 
-const authScreen   = document.getElementById('authScreen');
-const authCreate   = document.getElementById('authCreate');
-const authShow     = document.getElementById('authShow');
-const authLogin    = document.getElementById('authLogin');
-const authNumberEl = document.getElementById('authNumberDisplay');
-const confirmCheck = document.getElementById('confirmCheck');
-const enterBtn     = document.getElementById('enterBtn');
-const loginInput   = document.getElementById('loginInput');
-const loginError   = document.getElementById('loginError');
+// ── Audio Element ──────────────────────────────────────────────
+const audio = document.getElementById('audioEl');
+audio.volume = 0.8;
 
-function formatAccountNumber(num) {
-  return num.replace(/(\d{4})(?=\d)/g, '$1 ');
+// ── DOM Refs ───────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+// Auth
+const authScreen = $('authScreen');
+const authCreate = $('authCreate');
+const authShow = $('authShow');
+const authLogin = $('authLogin');
+
+// App
+const app = $('app');
+
+// Pages
+const pages = {
+  home: $('page-home'),
+  search: $('page-search'),
+  library: $('page-library'),
+  settings: $('page-settings'),
+  playlist: $('page-playlist'),
+};
+let currentPage = 'home';
+let previousPage = 'library';
+
+// Mini player
+const miniPlayer = $('miniPlayer');
+const miniProgress = $('miniProgress');
+const miniThumb = $('miniThumb');
+const miniTitle = $('miniTitle');
+const miniArtist = $('miniArtist');
+const miniPlayIcon = $('miniPlayIcon');
+
+// Full player
+const fullPlayer = $('fullPlayer');
+const fullPlayerBg = $('fullPlayerBg');
+const fullArt = $('fullArt');
+const fullTitle = $('fullTitle');
+const fullArtist = $('fullArtist');
+const fullPlayIcon = $('fullPlayIcon');
+const fullProgressSlider = $('fullProgressSlider');
+const fullTimeCur = $('fullTimeCur');
+const fullTimeTotal = $('fullTimeTotal');
+const fullVolumeSlider = $('fullVolumeSlider');
+
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+
+function showAuthView(view) {
+  [authCreate, authShow, authLogin].forEach(v => v.classList.add('hidden'));
+  view.classList.remove('hidden');
 }
 
-// Formateo automático del input de login
-loginInput.addEventListener('input', () => {
-  const raw = loginInput.value.replace(/\D/g, '').slice(0, 16);
-  loginInput.value = formatAccountNumber(raw);
-  loginError.style.display = 'none';
-});
+$('showLoginBtn').onclick = () => showAuthView(authLogin);
+$('showCreateBtn').onclick = () => showAuthView(authCreate);
 
-// Crear cuenta
-document.getElementById('createAccBtn').addEventListener('click', async () => {
+$('createAccBtn').onclick = async () => {
   try {
-    const res = await fetch('/api/account/create', { method: 'POST' });
+    const res = await fetch(`${API}/api/account/create`, { method: 'POST' });
     const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-
-    authNumberEl.textContent = formatAccountNumber(data.accountNumber);
-    authNumberEl.dataset.raw = data.accountNumber;
-    authCreate.style.display = 'none';
-    authShow.style.display = '';
+    const num = data.accountNumber;
+    $('authNumberDisplay').textContent = num.replace(/(.{4})/g, '$1 ').trim();
+    $('authNumberDisplay').dataset.raw = num;
+    showAuthView(authShow);
   } catch (e) {
-    console.error('Error creando cuenta:', e);
+    toast('Error al crear cuenta');
   }
-});
+};
 
-// Copiar número
-document.getElementById('copyAccBtn').addEventListener('click', () => {
-  const num = authNumberEl.dataset.raw;
-  navigator.clipboard.writeText(num).then(() => {
-    document.getElementById('copyAccBtn').textContent = 'COPIADO';
-    setTimeout(() => { document.getElementById('copyAccBtn').textContent = 'COPIAR'; }, 2000);
-  });
-});
+$('copyAccBtn').onclick = () => {
+  navigator.clipboard.writeText($('authNumberDisplay').dataset.raw);
+  toast('Copiado al portapapeles');
+};
 
-// Descargar número como .txt
-document.getElementById('downloadAccBtn').addEventListener('click', () => {
-  const num = authNumberEl.dataset.raw;
-  const blob = new Blob([`NEOVOX YT-V — Cuenta anonima\n\nNumero de cuenta: ${num}\n\nGuarda este archivo en un lugar seguro.\n`], { type: 'text/plain' });
+$('downloadAccBtn').onclick = () => {
+  const num = $('authNumberDisplay').dataset.raw;
+  const blob = new Blob([`NEOVOX Music\nNumero de cuenta: ${num}\nGuarda este archivo en un lugar seguro.`], { type: 'text/plain' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `neovox-cuenta-${num.slice(0, 4)}.txt`;
+  a.download = `neovox-account-${num.slice(0, 4)}.txt`;
   a.click();
-  URL.revokeObjectURL(a.href);
-});
+};
 
-// Checkbox confirmar
-confirmCheck.addEventListener('change', () => {
-  enterBtn.disabled = !confirmCheck.checked;
-});
+$('confirmCheck').onchange = (e) => {
+  $('enterBtn').disabled = !e.target.checked;
+};
 
-// Entrar tras crear cuenta
-enterBtn.addEventListener('click', () => {
-  const num = authNumberEl.dataset.raw;
+$('enterBtn').onclick = () => {
+  const num = $('authNumberDisplay').dataset.raw;
   localStorage.setItem('neovox_account', num);
   currentAccount = num;
-  authScreen.classList.add('hidden');
-  initApp();
-});
+  enterApp();
+};
 
-// Mostrar login
-document.getElementById('showLoginBtn').addEventListener('click', () => {
-  authCreate.style.display = 'none';
-  authLogin.style.display = '';
-});
-
-// Mostrar crear
-document.getElementById('showCreateBtn').addEventListener('click', () => {
-  authLogin.style.display = 'none';
-  authCreate.style.display = '';
-});
-
-// Login
-document.getElementById('loginBtn').addEventListener('click', async () => {
-  const num = loginInput.value.replace(/\D/g, '');
-  if (num.length !== 16) {
-    loginError.textContent = 'EL NUMERO DEBE TENER 16 DIGITOS';
-    loginError.style.display = '';
+$('loginBtn').onclick = async () => {
+  const raw = $('loginInput').value.replace(/\s/g, '');
+  if (!/^\d{16}$/.test(raw)) {
+    showError('Debe ser un numero de 16 digitos');
     return;
   }
   try {
-    const res = await fetch('/api/account/login', {
+    const res = await fetch(`${API}/api/account/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accountNumber: num })
+      body: JSON.stringify({ accountNumber: raw }),
     });
-    if (res.status === 404) {
-      loginError.textContent = 'CUENTA NO ENCONTRADA';
-      loginError.style.display = '';
+    if (!res.ok) {
+      showError('Cuenta no encontrada');
       return;
     }
-    if (!res.ok) throw new Error('Error de servidor');
-
-    localStorage.setItem('neovox_account', num);
-    currentAccount = num;
-    authScreen.classList.add('hidden');
-    initApp();
+    localStorage.setItem('neovox_account', raw);
+    currentAccount = raw;
+    enterApp();
   } catch (e) {
-    loginError.textContent = 'ERROR DE CONEXION';
-    loginError.style.display = '';
+    showError('Error de conexion');
   }
+};
+
+$('loginInput').addEventListener('input', (e) => {
+  let v = e.target.value.replace(/\D/g, '').slice(0, 16);
+  v = v.replace(/(.{4})/g, '$1 ').trim();
+  e.target.value = v;
 });
 
-// Auto-login si ya tiene cuenta guardada
-if (currentAccount) {
+function showError(msg) {
+  const el = $('loginError');
+  el.textContent = msg;
+  el.classList.remove('hidden');
+  setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+function enterApp() {
   authScreen.classList.add('hidden');
-  // initApp se llama abajo al final del archivo
+  app.classList.remove('hidden');
+  loadPlaylists();
+  loadTrending();
+  loadStats();
+  // Register visit
+  fetch(`${API}/api/visit`, { method: 'POST' }).catch(() => {});
+  // Settings account number
+  $('settingsAccNum').textContent = currentAccount.replace(/(.{4})/g, '$1 ').trim();
 }
 
-// Header: botón logout
-function addLogoutButton() {
-  const header = document.querySelector('.app-header .flex');
-  if (document.getElementById('logoutBtn')) return;
-  const btn = document.createElement('button');
-  btn.id = 'logoutBtn';
-  btn.className = 'theme-btn';
-  btn.title = 'Cerrar sesion';
-  btn.style.marginLeft = '8px';
-  btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--btn-fill)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>';
-  btn.addEventListener('click', () => {
-    localStorage.removeItem('neovox_account');
-    location.reload();
-  });
-  header.appendChild(btn);
+// Auto-login
+if (currentAccount) {
+  enterApp();
 }
 
-// ── Estado global ──────────────────────────────────────────────
-let playlists = [];
-let activeId  = null;
-let ytPlayer  = null;
-let ytReady   = false;
-let isPlaying = false;
-let bars      = [];
-let waveTimer = null;
-let progTimer = null;
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
 
-// ── Keep-alive: <audio> silencioso para evitar suspensión en segundo plano ──
-// Un elemento <audio> real con loop es más fiable que AudioContext en móvil,
-// porque el navegador lo asocia a MediaSession y no lo suspende.
-let keepAliveAudio = null;
+function showPage(name) {
+  if (name === currentPage) return;
+  previousPage = currentPage;
 
-function createSilentAudio() {
-  // WAV mínimo: 1 segundo de silencio, mono, 8kHz, 8-bit
-  // Generado inline para no depender de un archivo externo
-  const sampleRate = 8000;
-  const numSamples = sampleRate; // 1 segundo
-  const headerSize = 44;
-  const dataSize = numSamples;
-  const buffer = new ArrayBuffer(headerSize + dataSize);
-  const view = new DataView(buffer);
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  pages[name].classList.add('active');
 
-  // RIFF header
-  const writeStr = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)); };
-  writeStr(0, 'RIFF');
-  view.setUint32(4, 36 + dataSize, true);
-  writeStr(8, 'WAVE');
-  // fmt chunk
-  writeStr(12, 'fmt ');
-  view.setUint32(16, 16, true);       // chunk size
-  view.setUint16(20, 1, true);        // PCM
-  view.setUint16(22, 1, true);        // mono
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate, true); // byte rate
-  view.setUint16(32, 1, true);        // block align
-  view.setUint16(34, 8, true);        // bits per sample
-  // data chunk
-  writeStr(36, 'data');
-  view.setUint32(40, dataSize, true);
-  // Silencio: 128 = punto medio en 8-bit unsigned PCM
-  for (let i = 0; i < numSamples; i++) view.setUint8(headerSize + i, 128);
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navBtn = document.querySelector(`.nav-item[data-page="${name}"]`);
+  if (navBtn) navBtn.classList.add('active');
 
-  const blob = new Blob([buffer], { type: 'audio/wav' });
-  return URL.createObjectURL(blob);
-}
+  currentPage = name;
 
-function startKeepAlive() {
-  if (keepAliveAudio) return;
-  try {
-    keepAliveAudio = new Audio(createSilentAudio());
-    keepAliveAudio.loop = true;
-    keepAliveAudio.volume = 0.01;
-    keepAliveAudio.play().catch(() => {});
-  } catch {}
-}
-
-function stopKeepAlive() {
-  if (keepAliveAudio) {
-    keepAliveAudio.pause();
-    keepAliveAudio.src = '';
-    keepAliveAudio = null;
+  if (name === 'search') {
+    setTimeout(() => $('searchInput').focus(), 300);
   }
 }
 
-// Reanudar reproducción si el navegador la pausó al volver de segundo plano
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && isPlaying && ytReady && ytPlayer) {
-    try {
-      const state = ytPlayer.getPlayerState();
-      if (state === 2) ytPlayer.playVideo();
-    } catch {}
-  }
-  // Reactivar audio silencioso si fue suspendido
-  if (keepAliveAudio && keepAliveAudio.paused && isPlaying) {
-    keepAliveAudio.play().catch(() => {});
-  }
+document.querySelectorAll('.nav-item').forEach(btn => {
+  btn.onclick = () => showPage(btn.dataset.page);
 });
 
-// ── Referencias DOM ────────────────────────────────────────────
-const vinyl    = document.getElementById('vinyl');
-const tonearm  = document.getElementById('tonearm');
-const playBtn  = document.getElementById('playBtn');
-const pauseBtn = document.getElementById('pauseBtn');
-const stopBtn  = document.getElementById('stopBtn');
-const prevBtn  = document.getElementById('prevBtn');
-const nextBtn  = document.getElementById('nextBtn');
-const progFill = document.getElementById('progFill');
-const tCur     = document.getElementById('tCur');
-const tTot     = document.getElementById('tTot');
-const wfEl     = document.getElementById('wf');
-const volSl    = document.getElementById('volSl');
-const volVal   = document.getElementById('volVal');
-const d1       = document.getElementById('d1');
-const d2       = document.getElementById('d2');
-const d3       = document.getElementById('d3');
-const tiName   = document.getElementById('tiName');
-const tiSub    = document.getElementById('tiSub');
-const sysmsg   = document.getElementById('sysmsg');
-const plList   = document.getElementById('plList');
-const counter  = document.getElementById('counter');
+// Playlist detail back
+$('playlistBack').onclick = () => {
+  pages.playlist.classList.remove('active');
+  pages[previousPage].classList.add('active');
+  currentPage = previousPage;
+};
 
-// ── Tema claro/oscuro ──────────────────────────────────────────
-function loadTheme() {
-  const saved = localStorage.getItem('neovox_theme');
-  if (saved === 'light') document.body.classList.add('light');
-}
+// ═══════════════════════════════════════════════════════════════
+// PLAYLISTS (API)
+// ═══════════════════════════════════════════════════════════════
 
-document.getElementById('themeBtn').addEventListener('click', () => {
-  document.body.classList.toggle('light');
-  const isLight = document.body.classList.contains('light');
-  localStorage.setItem('neovox_theme', isLight ? 'light' : 'dark');
-});
-
-loadTheme();
-
-// ── Utilidades ─────────────────────────────────────────────────
-function fmt(s) {
-  if (!s || isNaN(s)) return '0:00';
-  s = Math.floor(s);
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-}
-
-function setMsg(t) {
-  sysmsg.textContent = t;
-}
-
-function extractId(url) {
-  const m = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
-  return m ? m[1] : null;
-}
-
-// ── API (con cuenta anónima) ──────────────────────────────────
-function authHeaders(extra = {}) {
-  return { 'X-Account-Number': currentAccount, ...extra };
-}
-
-async function loadFromAPI() {
+async function loadPlaylists() {
   try {
-    const res = await fetch('/api/playlists', { headers: authHeaders() });
-    if (!res.ok) throw new Error(res.statusText);
+    const res = await fetch(`${API}/api/playlists`, {
+      headers: { 'X-Account-Number': currentAccount },
+    });
     playlists = await res.json();
+    renderPlaylists();
+    renderQuickPicks();
   } catch (e) {
-    console.error('NEOVOX: Error cargando playlists:', e);
-    playlists = [];
+    console.error('Failed to load playlists:', e);
   }
 }
 
-async function savePlaylistAPI(name, ytId) {
-  const res = await fetch('/api/playlists', {
-    method: 'POST',
-    headers: authHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ name, ytId })
-  });
-  if (res.status === 409) {
-    setMsg('LIMITE 20 PLAYLISTS ALCANZADO');
-    return null;
-  }
-  if (!res.ok) throw new Error(res.statusText);
-  return res.json();
-}
-
-async function removePlaylistAPI(id) {
-  const res = await fetch(`/api/playlists/${id}`, { method: 'DELETE', headers: authHeaders() });
-  if (!res.ok && res.status !== 404) throw new Error(res.statusText);
-}
-
-// ── Render lista playlists ─────────────────────────────────────
-function renderList() {
-  counter.textContent = `${playlists.length} LISTA${playlists.length !== 1 ? 'S' : ''} · MAX 20`;
-
-  if (!playlists.length) {
-    plList.innerHTML = `
-      <div style="text-align:center;padding:40px 20px;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--pl-id-color);letter-spacing:2px;line-height:2.2">
-        · VAULT VACÍA ·<br>AÑADE TU PRIMERA PLAYLIST
+function renderPlaylists() {
+  const grid = $('playlistGrid');
+  if (playlists.length === 0) {
+    grid.innerHTML = `
+      <div class="empty-state">
+        <span class="material-symbols-rounded">queue_music</span>
+        <p>Aun no tienes playlists</p>
+        <button class="btn-primary btn-sm" onclick="openAddModal()">Agregar playlist</button>
       </div>`;
     return;
   }
 
-  plList.innerHTML = '';
-  playlists.forEach(pl => {
-    const isActive = pl.id === activeId;
-    const el = document.createElement('div');
-    el.className = 'pl-item' + (isActive ? ' active' : '');
-    el.innerHTML = `
-      <div style="width:36px;height:36px;border-radius:8px;background:var(--pl-icon-bg);border:1px solid var(--pl-icon-border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
-        <div style="width:22px;height:22px;border-radius:50%;background:var(--pl-icon-vinyl);border:1px solid var(--pl-icon-vinyl-border);display:flex;align-items:center;justify-content:center">
-          <div style="width:6px;height:6px;border-radius:50%;background:var(--pl-icon-dot)"></div>
-        </div>
+  grid.innerHTML = playlists.map(pl => `
+    <div class="playlist-card" data-id="${pl.id}" data-ytid="${pl.ytId}" onclick="openPlaylistDetail('${pl.id}')">
+      <div class="playlist-card-art">
+        <span class="material-symbols-rounded">queue_music</span>
       </div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:12px;letter-spacing:1px;color:${isActive ? 'var(--pl-name-active)' : 'var(--pl-name)'};font-weight:700;margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pl.name}</div>
-        <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--pl-id-color);letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${pl.ytId}</div>
-        <div style="margin-top:3px">
-          <span style="font-size:9px;letter-spacing:1px;color:var(--pl-badge-color);background:var(--pl-badge-bg);border:1px solid var(--pl-badge-border);border-radius:3px;padding:2px 6px">YT PLAYLIST</span>
-        </div>
+      <div class="playlist-card-info">
+        <div class="playlist-card-name">${esc(pl.name)}</div>
+        <div class="playlist-card-sub">YouTube Playlist</div>
       </div>
-      <div style="display:flex;gap:5px;flex-shrink:0">
-        <button class="play-pl-btn" data-id="${pl.id}"
-          style="width:28px;height:28px;border-radius:6px;border:1px solid var(--pl-btn-border);background:var(--pl-btn-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s">
-          <svg width="10" height="10" viewBox="0 0 10 10" style="fill:var(--pl-btn-fill)"><polygon points="3,2 8,5 3,8"/></svg>
-        </button>
-        <button class="del-btn" data-id="${pl.id}"
-          style="width:28px;height:28px;border-radius:6px;border:1px solid var(--pl-btn-border);background:var(--pl-btn-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s">
-          <svg width="10" height="10" viewBox="0 0 10 10"><line x1="2" y1="2" x2="8" y2="8" stroke="var(--del-stroke)" stroke-width="1.5" stroke-linecap="round"/><line x1="8" y1="2" x2="2" y2="8" stroke="var(--del-stroke)" stroke-width="1.5" stroke-linecap="round"/></svg>
-        </button>
-      </div>`;
-
-    el.querySelector('.play-pl-btn').addEventListener('click', e => { e.stopPropagation(); loadPlaylist(pl.id); });
-    el.querySelector('.del-btn').addEventListener('click', e => { e.stopPropagation(); deletePlaylist(pl.id); });
-    el.addEventListener('click', () => loadPlaylist(pl.id));
-    plList.appendChild(el);
-  });
+      <button class="playlist-card-play" onclick="event.stopPropagation(); quickPlayPlaylist('${pl.ytId}', '${esc(pl.name)}')">
+        <span class="material-symbols-rounded">play_arrow</span>
+      </button>
+    </div>
+  `).join('');
 }
 
-// ── Cargar playlist en el player ───────────────────────────────
-function loadPlaylist(id) {
+function renderQuickPicks() {
+  const el = $('quickPicks');
+  if (playlists.length === 0) {
+    el.innerHTML = `
+      <div class="empty-state" style="padding:24px">
+        <span class="material-symbols-rounded">library_music</span>
+        <p>Agrega playlists desde la biblioteca</p>
+      </div>`;
+    return;
+  }
+  el.innerHTML = playlists.slice(0, 6).map(pl => `
+    <div class="quick-pick" onclick="quickPlayPlaylist('${pl.ytId}', '${esc(pl.name)}')">
+      <div class="quick-pick-art">
+        <span class="material-symbols-rounded" style="font-size:16px;color:var(--text-muted);display:flex;align-items:center;justify-content:center;width:100%;height:100%">music_note</span>
+      </div>
+      <span>${esc(pl.name)}</span>
+    </div>
+  `).join('');
+}
+
+// ── Add Playlist Modal ─────────────────────────────────────────
+
+function openAddModal() {
+  $('addModal').classList.remove('hidden');
+  $('modalPlName').value = '';
+  $('modalPlUrl').value = '';
+  $('modalPlName').focus();
+}
+
+$('addPlaylistBtn').onclick = openAddModal;
+$('addFirstPlaylist')?.addEventListener('click', openAddModal);
+$('modalCancel').onclick = () => $('addModal').classList.add('hidden');
+
+$('modalAdd').onclick = async () => {
+  const name = $('modalPlName').value.trim();
+  const url = $('modalPlUrl').value.trim();
+  if (!name || !url) { toast('Completa todos los campos'); return; }
+
+  const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+  if (!match) { toast('URL de playlist invalida'); return; }
+
+  try {
+    const res = await fetch(`${API}/api/playlists`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Account-Number': currentAccount,
+      },
+      body: JSON.stringify({ name, ytId: match[1] }),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      toast(err.error || 'Error al agregar');
+      return;
+    }
+    $('addModal').classList.add('hidden');
+    toast('Playlist agregada');
+    loadPlaylists();
+  } catch (e) {
+    toast('Error de conexion');
+  }
+};
+
+// ── Playlist Detail ────────────────────────────────────────────
+
+let currentPlaylistDetail = null;
+
+async function openPlaylistDetail(id) {
   const pl = playlists.find(p => p.id === id);
   if (!pl) return;
-  activeId = id;
-  renderList();
 
-  if (!ytReady) {
-    setMsg('API NO LISTA · ESPERA...');
+  currentPlaylistDetail = pl;
+  $('playlistDetailTitle').textContent = pl.name;
+  $('playlistHeroTitle').textContent = pl.name;
+  $('playlistHeroSub').textContent = 'Cargando...';
+  $('playlistHeroArt').innerHTML = '';
+  $('playlistTracks').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+
+  previousPage = currentPage;
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  pages.playlist.classList.add('active');
+  currentPage = 'playlist';
+
+  try {
+    const res = await fetch(`${API}/api/playlist-items/${pl.ytId}`);
+    const data = await res.json();
+
+    if (data.thumbnail) {
+      $('playlistHeroArt').innerHTML = `<img src="${data.thumbnail}" alt="" />`;
+    }
+    $('playlistHeroSub').textContent = `${data.items.length} canciones`;
+
+    renderTrackList($('playlistTracks'), data.items);
+
+    // Update quick pick art
+    updatePlaylistArt(pl.id, data.thumbnail);
+  } catch (e) {
+    $('playlistTracks').innerHTML = '<div class="empty-state"><p>Error al cargar playlist</p></div>';
+  }
+}
+
+$('playAllBtn').onclick = () => {
+  const tracks = $('playlistTracks').querySelectorAll('.track-item');
+  if (tracks.length === 0) return;
+  const items = Array.from(tracks).map(t => JSON.parse(t.dataset.track));
+  playQueue(items, 0);
+};
+
+$('shuffleBtn').onclick = () => {
+  const tracks = $('playlistTracks').querySelectorAll('.track-item');
+  if (tracks.length === 0) return;
+  const items = Array.from(tracks).map(t => JSON.parse(t.dataset.track));
+  const shuffled = [...items].sort(() => Math.random() - 0.5);
+  playQueue(shuffled, 0);
+};
+
+$('playlistDelete').onclick = async () => {
+  if (!currentPlaylistDetail) return;
+  if (!confirm('Eliminar esta playlist?')) return;
+
+  try {
+    await fetch(`${API}/api/playlists/${currentPlaylistDetail.id}`, {
+      method: 'DELETE',
+      headers: { 'X-Account-Number': currentAccount },
+    });
+    toast('Playlist eliminada');
+    $('playlistBack').click();
+    loadPlaylists();
+  } catch (e) {
+    toast('Error al eliminar');
+  }
+};
+
+async function quickPlayPlaylist(ytId, name) {
+  try {
+    toast(`Cargando ${name}...`);
+    const res = await fetch(`${API}/api/playlist-items/${ytId}`);
+    const data = await res.json();
+    if (data.items.length > 0) {
+      playQueue(data.items, 0);
+    } else {
+      toast('Playlist vacia');
+    }
+  } catch (e) {
+    toast('Error al cargar playlist');
+  }
+}
+
+function updatePlaylistArt(plId, thumbUrl) {
+  if (!thumbUrl) return;
+  const card = document.querySelector(`.playlist-card[data-id="${plId}"] .playlist-card-art`);
+  if (card) card.innerHTML = `<img src="${thumbUrl}" alt="" />`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════════════
+
+let searchTimer = null;
+
+$('searchInput').addEventListener('input', (e) => {
+  const q = e.target.value.trim();
+  $('searchClear').classList.toggle('hidden', !q);
+  clearTimeout(searchTimer);
+  if (!q) {
+    $('searchResults').innerHTML = `
+      <div class="empty-state">
+        <span class="material-symbols-rounded">travel_explore</span>
+        <p>Busca tu musica favorita</p>
+      </div>`;
     return;
   }
-
-  try {
-    isPlaying = false;
-    vinyl.classList.remove('animate-spin-vinyl');
-    setArmRest();
-    animWf(false);
-    updateDots('stopped');
-    playBtn.classList.remove('active');
-    pauseBtn.classList.remove('active');
-    progFill.style.width = '0%';
-    tCur.textContent = '0:00';
-    tTot.textContent = '0:00';
-    stopProg();
-
-    tiName.textContent = pl.name.toUpperCase();
-    tiSub.textContent  = 'YT: ' + pl.ytId.substring(0, 18) + '...';
-    setMsg('CARGANDO PLAYLIST...');
-
-    ytPlayer.loadPlaylist({ listType: 'playlist', list: pl.ytId, index: 0, startSeconds: 0 });
-    ytPlayer.setVolume(parseInt(volSl.value));
-  } catch (e) {
-    setMsg('ERROR: ' + e.message);
-    console.error('NEOVOX loadPlaylist error:', e);
-  }
-}
-
-// ── Eliminar playlist ──────────────────────────────────────────
-async function deletePlaylist(id) {
-  try {
-    await removePlaylistAPI(id);
-    playlists = playlists.filter(p => p.id !== id);
-    if (activeId === id) {
-      activeId = null;
-      doStop();
-      tiName.textContent = '· NEOVOX YT-V ·';
-      tiSub.textContent  = 'SELECCIONA UNA PLAYLIST';
-      setMsg('SELECCIONA UNA PLAYLIST DEL PANEL');
-    }
-    renderList();
-  } catch (e) {
-    setMsg('ERROR AL ELIMINAR');
-    console.error('NEOVOX delete error:', e);
-  }
-}
-
-// ── Añadir playlist ────────────────────────────────────────────
-document.getElementById('addBtn').addEventListener('click', async () => {
-  const name = document.getElementById('plName').value.trim();
-  const url  = document.getElementById('plUrl').value.trim();
-  if (!name) { setMsg('INTRODUCE UN NOMBRE'); return; }
-  const ytId = extractId(url);
-  if (!ytId) { setMsg('URL INVÁLIDA · USA ?list=...'); return; }
-
-  try {
-    const created = await savePlaylistAPI(name, ytId);
-    if (!created) return;
-    playlists.unshift(created);
-    renderList();
-    document.getElementById('plName').value = '';
-    document.getElementById('plUrl').value  = '';
-    setMsg('✓ PLAYLIST GUARDADA EN VAULT');
-  } catch (e) {
-    setMsg('ERROR AL GUARDAR');
-    console.error('NEOVOX save error:', e);
-  }
+  searchTimer = setTimeout(() => doSearch(q), 500);
 });
 
-// ── Waveform ───────────────────────────────────────────────────
-function buildWf() {
-  wfEl.innerHTML = '';
-  bars = [];
-  for (let i = 0; i < 52; i++) {
-    const b = document.createElement('div');
-    b.className = 'wf-bar';
-    const h = 4 + Math.random() * 10;
-    b.style.height = h + 'px';
-    b.dataset.base = h;
-    wfEl.appendChild(b);
-    bars.push(b);
+$('searchClear').onclick = () => {
+  $('searchInput').value = '';
+  $('searchClear').classList.add('hidden');
+  $('searchResults').innerHTML = `
+    <div class="empty-state">
+      <span class="material-symbols-rounded">travel_explore</span>
+      <p>Busca tu musica favorita</p>
+    </div>`;
+  $('searchInput').focus();
+};
+
+async function doSearch(q) {
+  $('searchResults').innerHTML = '<div class="loading-spinner"><div class="spinner"></div></div>';
+  try {
+    const res = await fetch(`${API}/api/search?q=${encodeURIComponent(q)}&limit=25`);
+    const items = await res.json();
+    if (items.length === 0) {
+      $('searchResults').innerHTML = '<div class="empty-state"><p>Sin resultados</p></div>';
+      return;
+    }
+    renderTrackList($('searchResults'), items);
+  } catch (e) {
+    $('searchResults').innerHTML = '<div class="empty-state"><p>Error en la busqueda</p></div>';
   }
 }
 
-function animWf(on) {
-  if (waveTimer) { clearInterval(waveTimer); waveTimer = null; }
-  bars.forEach(b => {
-    b.classList.toggle('active', on);
-    b.style.animationDelay = (Math.random() * 0.6) + 's';
-    b.style.height = b.dataset.base + 'px';
-    if (on) b.style.animation = `wave ${0.5 + Math.random() * 0.6}s ease-in-out infinite alternate`;
-    else b.style.animation = '';
-  });
-  if (on) {
-    waveTimer = setInterval(() => {
-      bars.forEach((b, i) => {
-        const base = 6 + Math.sin(Date.now() / 300 + i * 0.4) * 10 + Math.random() * 8;
-        const eq = getEqMultiplier(i, bars.length);
-        const h = base * eq;
-        b.style.height = Math.max(3, Math.min(h, 28)) + 'px';
-      });
-    }, 80);
-  }
-}
+// ═══════════════════════════════════════════════════════════════
+// TRENDING
+// ═══════════════════════════════════════════════════════════════
 
-// ── Brazo y estado visual ──────────────────────────────────────
-const ARM_REST  =   0;
-const ARM_START =  25;
-const ARM_END   =  55;
-
-function setArmRest() {
-  tonearm.style.transform = `rotate(${ARM_REST}deg)`;
-}
-
-function setArmProgress(pct) {
-  if (isDragging) return;
-  const clamped = Math.max(0, Math.min(100, pct));
-  const angle = ARM_START + (ARM_END - ARM_START) * (clamped / 100);
-  tonearm.style.transform = `rotate(${angle}deg)`;
-}
-
-// ── Drag de la aguja ───────────────────────────────────────────
-let isDragging = false;
-let dragAngle  = 0;
-
-function getPivotCenter() {
-  const pivotEl = tonearm.querySelector('.tonearm-pivot');
-  const pRect = pivotEl.getBoundingClientRect();
-  return {
-    x: pRect.left + pRect.width / 2,
-    y: pRect.top + pRect.height / 2
-  };
-}
-
-function angleFromMouse(e) {
-  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-  const pivot = getPivotCenter();
-  const dx = clientX - pivot.x;
-  const dy = clientY - pivot.y;
-  let angle = Math.atan2(-dx, dy) * (180 / Math.PI);
-  return Math.max(ARM_REST, Math.min(ARM_END, angle));
-}
-
-function onDragStart(e) {
-  e.preventDefault();
-  isDragging = true;
-  tonearm.classList.add('dragging');
-  document.addEventListener('mousemove', onDragMove);
-  document.addEventListener('mouseup', onDragEnd);
-  document.addEventListener('touchmove', onDragMove, { passive: false });
-  document.addEventListener('touchend', onDragEnd);
-}
-
-function onDragMove(e) {
-  if (!isDragging) return;
-  e.preventDefault();
-  dragAngle = angleFromMouse(e);
-  tonearm.style.transform = `rotate(${dragAngle}deg)`;
-}
-
-function onDragEnd() {
-  if (!isDragging) return;
-  isDragging = false;
-  tonearm.classList.remove('dragging');
-  document.removeEventListener('mousemove', onDragMove);
-  document.removeEventListener('mouseup', onDragEnd);
-  document.removeEventListener('touchmove', onDragMove);
-  document.removeEventListener('touchend', onDragEnd);
-
-  // Soltó sobre el disco: reproducir desde esa posición
-  if (dragAngle >= ARM_START && activeId && ytReady) {
-    const pct = (dragAngle - ARM_START) / (ARM_END - ARM_START) * 100;
-    try {
-      const duration = ytPlayer.getDuration() || 0;
-      if (duration > 0) {
-        ytPlayer.seekTo((pct / 100) * duration, true);
-      }
-      ytPlayer.playVideo();
-    } catch {}
-  } else {
-    // Soltó fuera del disco
-    if (isPlaying) {
-      try {
-        const c = ytPlayer.getCurrentTime() || 0;
-        const d = ytPlayer.getDuration() || 0;
-        setArmProgress(d > 0 ? (c / d) * 100 : 0);
-      } catch { setArmProgress(0); }
+async function loadTrending() {
+  try {
+    const res = await fetch(`${API}/api/trending`);
+    const items = await res.json();
+    if (items.length > 0) {
+      renderTrackList($('trendingList'), items);
     } else {
-      setArmRest();
+      $('trendingList').innerHTML = '<div class="empty-state"><p>No se pudieron cargar tendencias</p></div>';
     }
+  } catch (e) {
+    $('trendingList').innerHTML = '<div class="empty-state"><p>Error al cargar tendencias</p></div>';
   }
 }
 
-tonearm.addEventListener('mousedown', onDragStart);
-tonearm.addEventListener('touchstart', onDragStart, { passive: false });
+// ═══════════════════════════════════════════════════════════════
+// TRACK RENDERING
+// ═══════════════════════════════════════════════════════════════
 
-function updateDots(state) {
-  const on = 'var(--dot-on)';
-  const off = 'var(--dot-off)';
-  d1.style.background = state === 'stopped' ? on : off;
-  d2.style.background = state === 'paused'  ? on : off;
-  d3.style.background = state === 'playing' ? on : off;
-  d1.style.boxShadow  = state === 'stopped' ? '0 0 7px var(--dot-on)' : 'none';
-  d2.style.boxShadow  = state === 'paused'  ? '0 0 7px var(--dot-on)' : 'none';
-  d3.style.boxShadow  = state === 'playing' ? '0 0 7px var(--dot-on)' : 'none';
+function renderTrackList(container, items) {
+  container.innerHTML = items.map((track, i) => `
+    <div class="track-item ${currentTrack?.videoId === track.videoId ? 'playing' : ''}"
+         data-track='${JSON.stringify(track).replace(/'/g, "&#39;")}'
+         data-index="${i}"
+         onclick="playFromList(this)">
+      <div class="track-thumb">
+        ${track.thumbnail ? `<img src="${track.thumbnail}" alt="" loading="lazy" />` : ''}
+        ${currentTrack?.videoId === track.videoId ? `
+          <div class="playing-indicator">
+            <span class="material-symbols-rounded">${isPlaying ? 'equalizer' : 'pause'}</span>
+          </div>` : ''}
+      </div>
+      <div class="track-info">
+        <div class="track-title">${esc(track.title)}</div>
+        <div class="track-artist">${esc(track.artist)}</div>
+      </div>
+      <span class="track-duration">${track.duration || ''}</span>
+    </div>
+  `).join('');
 }
 
-// ── Progreso ───────────────────────────────────────────────────
-function startProg() {
-  if (progTimer) clearInterval(progTimer);
-  progTimer = setInterval(() => {
-    if (!ytPlayer || !ytReady) return;
-    try {
-      const c = ytPlayer.getCurrentTime() || 0;
-      const d = ytPlayer.getDuration()    || 0;
-      const pct = d > 0 ? (c / d) * 100 : 0;
-      tCur.textContent     = fmt(c);
-      tTot.textContent     = fmt(d);
-      progFill.style.width = pct + '%';
-      if (isPlaying) setArmProgress(pct);
-    } catch {}
-  }, 500);
+function playFromList(el) {
+  const track = JSON.parse(el.dataset.track);
+  // Build queue from siblings
+  const siblings = el.parentElement.querySelectorAll('.track-item');
+  const items = Array.from(siblings).map(s => JSON.parse(s.dataset.track));
+  const idx = parseInt(el.dataset.index);
+  playQueue(items, idx);
 }
 
-function stopProg() {
-  if (progTimer) { clearInterval(progTimer); progTimer = null; }
+// ═══════════════════════════════════════════════════════════════
+// PLAYER / QUEUE
+// ═══════════════════════════════════════════════════════════════
+
+function playQueue(items, startIndex) {
+  queue = items;
+  queueIndex = startIndex;
+  playTrack(queue[queueIndex]);
 }
 
-// ── MediaSession API (segundo plano) ───────────────────────────
-function updateMediaSession(title, artist) {
-  if (!('mediaSession' in navigator)) return;
-  const artwork = currentVideoId ? [
-    { src: `https://img.youtube.com/vi/${currentVideoId}/default.jpg`, sizes: '120x90', type: 'image/jpeg' },
-    { src: `https://img.youtube.com/vi/${currentVideoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' },
-    { src: `https://img.youtube.com/vi/${currentVideoId}/maxresdefault.jpg`, sizes: '1280x720', type: 'image/jpeg' }
-  ] : [];
-  navigator.mediaSession.metadata = new MediaMetadata({
-    title: title || 'NEOVOX YT-V',
-    artist: artist || 'YouTube Playlist',
-    album: 'NEOVOX',
-    artwork
-  });
-  navigator.mediaSession.setActionHandler('play', () => {
-    if (ytReady && activeId) ytPlayer.playVideo();
-  });
-  navigator.mediaSession.setActionHandler('pause', () => {
-    if (ytReady && isPlaying) ytPlayer.pauseVideo();
-  });
-  navigator.mediaSession.setActionHandler('previoustrack', () => {
-    if (ytReady && activeId) try { ytPlayer.previousVideo(); } catch {}
-  });
-  navigator.mediaSession.setActionHandler('nexttrack', () => {
-    if (ytReady && activeId) try { ytPlayer.nextVideo(); } catch {}
-  });
-  navigator.mediaSession.setActionHandler('stop', () => {
-    if (ytReady) { try { ytPlayer.stopVideo(); } catch {} doStop(); }
-  });
-}
-
-// ── Carátula del vinilo ─────────────────────────────────────────
-const labelCover = document.getElementById('labelCover');
-const labelText1 = document.getElementById('labelText1');
-const labelText2 = document.getElementById('labelText2');
-let currentVideoId = null;
-
-function updateCover(videoId) {
-  if (!videoId || videoId === currentVideoId) return;
-  currentVideoId = videoId;
-  // YouTube thumbnail: maxresdefault > hqdefault > 0
-  const thumbUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-  // Precargar imagen para transición suave
-  const img = new Image();
-  img.onload = () => {
-    labelCover.style.backgroundImage = `url(${thumbUrl})`;
-    labelCover.classList.add('visible');
-    labelText1.style.fontSize = 'clamp(3px,1vw,5px)';
-    labelText2.style.display = 'none';
-  };
-  img.onerror = () => {
-    // Fallback: intentar con 0.jpg
-    labelCover.style.backgroundImage = `url(https://img.youtube.com/vi/${videoId}/0.jpg)`;
-    labelCover.classList.add('visible');
-  };
-  img.src = thumbUrl;
-}
-
-function clearCover() {
-  labelCover.classList.remove('visible');
-  currentVideoId = null;
-  labelText1.textContent = 'CYBER';
-  labelText1.style.fontSize = '';
-  labelText2.style.display = '';
-  labelText2.textContent = '33\u2153';
-}
-
-// ── Tracklist: mostrar canciones de la playlist activa ─────────
-const tracklistPanel = document.getElementById('tracklistPanel');
-const tracklistItems = document.getElementById('tracklistItems');
-const trackCount     = document.getElementById('trackCount');
-let tracklistIds     = []; // videoIds de la playlist cargada
-
-function buildTracklist() {
-  if (!ytReady || !ytPlayer) return;
-  try {
-    const ids = ytPlayer.getPlaylist();
-    if (!ids || !ids.length) return;
-    tracklistIds = ids;
-    trackCount.textContent = ids.length + ' TRACKS';
-    tracklistPanel.style.display = '';
-
-    tracklistItems.innerHTML = '';
-    ids.forEach((videoId, i) => {
-      const el = document.createElement('div');
-      el.className = 'tracklist-item';
-      el.dataset.index = i;
-      el.dataset.videoId = videoId;
-      el.innerHTML = `
-        <span class="tracklist-num">${String(i + 1).padStart(2, '0')}</span>
-        <img src="https://img.youtube.com/vi/${videoId}/default.jpg" style="width:36px;height:27px;border-radius:3px;object-fit:cover;flex-shrink:0" loading="lazy">
-        <span class="tracklist-title" id="tt-${i}">${videoId}</span>
-        <span class="tracklist-dur" id="td-${i}"></span>`;
-      el.addEventListener('click', () => {
-        try { ytPlayer.playVideoAt(i); } catch {}
-      });
-      tracklistItems.appendChild(el);
-    });
-
-    // Intentar obtener títulos vía noembed (sin API key)
-    ids.forEach((videoId, i) => {
-      fetch(`https://noembed.com/embed?url=https://www.youtube.com/watch?v=${videoId}`)
-        .then(r => r.json())
-        .then(data => {
-          const titleEl = document.getElementById('tt-' + i);
-          if (titleEl && data.title) titleEl.textContent = data.title;
-        })
-        .catch(() => {});
-    });
-  } catch {}
-}
-
-function updateTracklistActive() {
-  if (!tracklistIds.length) return;
-  try {
-    const idx = ytPlayer.getPlaylistIndex?.() ?? -1;
-    const data = ytPlayer.getVideoData();
-    // Actualizar título del track actual
-    if (data?.title && idx >= 0) {
-      const titleEl = document.getElementById('tt-' + idx);
-      if (titleEl) titleEl.textContent = data.title;
-    }
-    // Resaltar el activo
-    tracklistItems.querySelectorAll('.tracklist-item').forEach((el, i) => {
-      el.classList.toggle('active', i === idx);
-    });
-    // Scroll al track activo
-    const activeEl = tracklistItems.querySelector('.tracklist-item.active');
-    if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  } catch {}
-}
-
-function clearTracklist() {
-  tracklistPanel.style.display = 'none';
-  tracklistItems.innerHTML = '';
-  tracklistIds = [];
-}
-
-// ── Acciones play / pause / stop ───────────────────────────────
-function doPlay() {
-  isPlaying = true;
-  startKeepAlive();
-  vinyl.classList.add('animate-spin-vinyl');
-  try {
-    const c = ytPlayer.getCurrentTime() || 0;
-    const d = ytPlayer.getDuration() || 0;
-    setArmProgress(d > 0 ? (c / d) * 100 : 0);
-  } catch { setArmProgress(0); }
-  animWf(true);
-  updateDots('playing');
-  playBtn.classList.add('active');
-  pauseBtn.classList.remove('active');
-  document.getElementById('playIco').innerHTML = '<polygon points="6,3 15,9 6,15" style="fill:var(--btn-hover-fill)"/>';
-  startProg();
-  setMsg('▶ REPRODUCIENDO');
-
-  let trackTitle = '';
-  try {
-    const data = ytPlayer.getVideoData();
-    if (data?.title) {
-      trackTitle = data.title;
-      tiName.textContent = trackTitle.toUpperCase();
-      const idx = ytPlayer.getPlaylistIndex?.() ?? 0;
-      tiSub.textContent = 'TRACK ' + String(idx + 1).padStart(2, '0');
-      // Carátula: texto corto en la etiqueta
-      labelText1.textContent = trackTitle.substring(0, 14).toUpperCase();
-    }
-    // Thumbnail del video como carátula del vinilo
-    if (data?.video_id) {
-      updateCover(data.video_id);
-    }
-  } catch {}
-
-  // Tracklist: construir si es la primera vez, actualizar track activo
-  if (!tracklistIds.length) buildTracklist();
-  updateTracklistActive();
-
-  // Actualizar controles del sistema (segundo plano)
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'playing';
-  }
-  updateMediaSession(trackTitle || 'NEOVOX YT-V');
-}
-
-function doPause() {
+async function playTrack(track) {
+  if (!track) return;
+  currentTrack = track;
   isPlaying = false;
-  vinyl.classList.remove('animate-spin-vinyl');
-  animWf(false);
-  updateDots('paused');
-  playBtn.classList.remove('active');
-  pauseBtn.classList.add('active');
-  document.getElementById('playIco').innerHTML = '<polygon points="6,3 15,9 6,15"/>';
-  stopProg();
-  setMsg('❚❚ PAUSA');
+  updatePlayerUI();
+  updatePlayingHighlight();
 
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'paused';
+  try {
+    const res = await fetch(`${API}/api/stream-url/${track.videoId}`);
+    if (!res.ok) throw new Error('Stream failed');
+    const data = await res.json();
+
+    // Use proxy to avoid CORS
+    const proxyUrl = `${API}/api/audio-proxy?url=${encodeURIComponent(data.url)}`;
+    audio.src = proxyUrl;
+    audio.play();
+    isPlaying = true;
+    updatePlayerUI();
+    showMiniPlayer();
+  } catch (e) {
+    console.error('Play error:', e);
+    toast('Error al reproducir');
+    // Try next track
+    setTimeout(() => playNext(), 1500);
   }
 }
 
-function doStop() {
-  isPlaying = false;
-  stopKeepAlive();
-  vinyl.classList.remove('animate-spin-vinyl');
-  setArmRest();
-  clearCover();
-  clearTracklist();
-  animWf(false);
-  updateDots('stopped');
-  playBtn.classList.remove('active');
-  pauseBtn.classList.remove('active');
-  document.getElementById('playIco').innerHTML = '<polygon points="6,3 15,9 6,15"/>';
-  progFill.style.width = '0%';
-  tCur.textContent = '0:00';
-  tTot.textContent = '0:00';
-  stopProg();
-  setMsg('■ DETENIDO');
-
-  if ('mediaSession' in navigator) {
-    navigator.mediaSession.playbackState = 'none';
+function playNext() {
+  if (repeatMode === 2) {
+    audio.currentTime = 0;
+    audio.play();
+    return;
+  }
+  if (queueIndex < queue.length - 1) {
+    queueIndex++;
+    playTrack(queue[queueIndex]);
+  } else if (repeatMode === 1) {
+    queueIndex = 0;
+    playTrack(queue[queueIndex]);
   }
 }
 
-// ── YouTube IFrame API ─────────────────────────────────────────
-window.onYouTubeIframeAPIReady = function () {
-  ytPlayer = new YT.Player('yt-player', {
-    height: '1',
-    width: '1',
-    playerVars: {
-      autoplay: 0,
-      controls: 0,
-      modestbranding: 1,
-      origin: location.origin
-    },
-    events: {
-      onReady: () => {
-        ytReady = true;
-        setMsg('SISTEMA LISTO · SELECCIONA UNA PLAYLIST');
-        console.log('NEOVOX: YouTube Player listo');
-      },
-      onStateChange: e => {
-        console.log('NEOVOX: YT state =', e.data);
-        if (e.data === YT.PlayerState.PLAYING)      doPlay();
-        else if (e.data === YT.PlayerState.PAUSED)   doPause();
-        else if (e.data === YT.PlayerState.ENDED)    { try { ytPlayer.nextVideo(); } catch {} }
-        else if (e.data === YT.PlayerState.BUFFERING) setMsg('BUFFERING...');
-        else if (e.data === YT.PlayerState.CUED)      setMsg('LISTO · PULSE PLAY');
-      },
-      onError: e => {
-        console.error('NEOVOX: YT error =', e.data);
-        setMsg('ERROR ' + e.data + ' · SALTANDO TRACK...');
-        setTimeout(() => { try { ytPlayer.nextVideo(); } catch {} }, 1500);
-      }
-    }
-  });
-};
-
-// ── Ecualizador ────────────────────────────────────────────────
-const eqSliders = document.querySelectorAll('.eq-slider');
-const eqPresetBtns = document.querySelectorAll('.eq-preset-btn');
-let eqValues = [0, 0, 0, 0, 0, 0, 0, 0]; // 8 bandas
-
-const EQ_PRESETS = {
-  flat:   [0, 0, 0, 0, 0, 0, 0, 0],
-  bass:   [10, 8, 5, 1, 0, 0, -1, -2],
-  vocal:  [-2, -1, 2, 6, 6, 3, 0, -2],
-  treble: [-3, -2, 0, 1, 3, 6, 9, 10]
-};
-
-function applyEqPreset(name) {
-  const vals = EQ_PRESETS[name];
-  if (!vals) return;
-  eqValues = [...vals];
-  eqSliders.forEach((sl, i) => { sl.value = vals[i]; });
-  eqPresetBtns.forEach(b => b.classList.toggle('active', b.dataset.preset === name));
-  setMsg(`EQ: ${name.toUpperCase()}`);
+function playPrev() {
+  if (audio.currentTime > 3) {
+    audio.currentTime = 0;
+    return;
+  }
+  if (queueIndex > 0) {
+    queueIndex--;
+    playTrack(queue[queueIndex]);
+  }
 }
 
-eqPresetBtns.forEach(btn => {
-  btn.addEventListener('click', () => applyEqPreset(btn.dataset.preset));
-});
-
-eqSliders.forEach((sl, i) => {
-  sl.addEventListener('input', () => {
-    eqValues[i] = parseInt(sl.value);
-    // Quitar preset activo al mover manualmente
-    eqPresetBtns.forEach(b => b.classList.remove('active'));
-  });
-});
-
-// Los valores del EQ se usan en la animación del waveform
-function getEqMultiplier(barIndex, totalBars) {
-  const bandIndex = Math.floor((barIndex / totalBars) * eqValues.length);
-  const clamped = Math.min(bandIndex, eqValues.length - 1);
-  return 1 + (eqValues[clamped] / 12) * 0.8; // rango 0.2 - 1.8
-}
-
-// ── Velocidad de reproducción ───────────────────────────────────
-let currentSpeed = 1;
-const speedBtns = document.querySelectorAll('.speed-btn');
-
-speedBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    const speed = parseFloat(btn.dataset.speed);
-    currentSpeed = speed;
-    speedBtns.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    if (ytReady && ytPlayer) {
-      try { ytPlayer.setPlaybackRate(speed); } catch {}
-    }
-    setMsg(`VELOCIDAD: ${speed}x`);
-  });
-});
-
-// ── Listeners controles ────────────────────────────────────────
-playBtn.addEventListener('click', () => {
-  if (!ytReady) { setMsg('ESPERANDO API DE YOUTUBE...'); return; }
-  if (!activeId) { setMsg('SELECCIONA UNA PLAYLIST PRIMERO'); return; }
+function togglePlay() {
+  if (!currentTrack) return;
   if (isPlaying) {
-    ytPlayer.pauseVideo();
+    audio.pause();
+    isPlaying = false;
   } else {
-    ytPlayer.playVideo();
+    audio.play();
+    isPlaying = true;
+  }
+  updatePlayerUI();
+}
+
+// Audio events
+audio.addEventListener('ended', () => {
+  isPlaying = false;
+  updatePlayerUI();
+  playNext();
+});
+
+audio.addEventListener('error', () => {
+  console.error('Audio error');
+  isPlaying = false;
+  updatePlayerUI();
+});
+
+// ═══════════════════════════════════════════════════════════════
+// UI UPDATES
+// ═══════════════════════════════════════════════════════════════
+
+function updatePlayerUI() {
+  const icon = isPlaying ? 'pause' : 'play_arrow';
+  miniPlayIcon.textContent = icon;
+  fullPlayIcon.textContent = icon;
+
+  if (currentTrack) {
+    miniTitle.textContent = currentTrack.title;
+    miniArtist.textContent = currentTrack.artist;
+    fullTitle.textContent = currentTrack.title;
+    fullArtist.textContent = currentTrack.artist;
+
+    if (currentTrack.thumbnail) {
+      miniThumb.innerHTML = `<img src="${currentTrack.thumbnail}" alt="" />`;
+      fullArt.innerHTML = `<img src="${currentTrack.thumbnail}" alt="" />`;
+      fullPlayerBg.style.backgroundImage = `url(${currentTrack.thumbnail})`;
+    }
+
+    // Update media session
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        artwork: currentTrack.thumbnail ? [{ src: currentTrack.thumbnail }] : [],
+      });
+    }
+  }
+}
+
+function showMiniPlayer() {
+  miniPlayer.classList.remove('hidden');
+}
+
+function updatePlayingHighlight() {
+  document.querySelectorAll('.track-item').forEach(el => {
+    const track = JSON.parse(el.dataset.track);
+    const isThis = currentTrack?.videoId === track.videoId;
+    el.classList.toggle('playing', isThis);
+
+    const thumb = el.querySelector('.track-thumb');
+    const existing = thumb.querySelector('.playing-indicator');
+    if (isThis && !existing) {
+      const div = document.createElement('div');
+      div.className = 'playing-indicator';
+      div.innerHTML = `<span class="material-symbols-rounded">${isPlaying ? 'equalizer' : 'pause'}</span>`;
+      thumb.appendChild(div);
+    } else if (!isThis && existing) {
+      existing.remove();
+    } else if (isThis && existing) {
+      existing.querySelector('.material-symbols-rounded').textContent = isPlaying ? 'equalizer' : 'pause';
+    }
+  });
+}
+
+// Progress update
+setInterval(() => {
+  if (!audio.duration || seekDragging) return;
+  const pct = (audio.currentTime / audio.duration) * 100;
+  miniProgress.style.width = pct + '%';
+  fullProgressSlider.value = pct;
+  fullTimeCur.textContent = fmtTime(audio.currentTime);
+  fullTimeTotal.textContent = fmtTime(audio.duration);
+}, 500);
+
+function fmtTime(s) {
+  if (!s || isNaN(s)) return '0:00';
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MINI PLAYER CONTROLS
+// ═══════════════════════════════════════════════════════════════
+
+$('miniPlayBtn').onclick = (e) => { e.stopPropagation(); togglePlay(); };
+$('miniPrev').onclick = (e) => { e.stopPropagation(); playPrev(); };
+$('miniNext').onclick = (e) => { e.stopPropagation(); playNext(); };
+
+// Tap mini player to open full player
+$('miniPlayerTap').onclick = (e) => {
+  if (e.target.closest('.mini-controls')) return;
+  openFullPlayer();
+};
+
+// ═══════════════════════════════════════════════════════════════
+// FULL PLAYER
+// ═══════════════════════════════════════════════════════════════
+
+function openFullPlayer() {
+  fullPlayer.classList.add('open');
+}
+
+function closeFullPlayer() {
+  fullPlayer.classList.remove('open');
+}
+
+$('fullPlayerClose').onclick = closeFullPlayer;
+$('fullPlayBtn').onclick = togglePlay;
+$('fullPrev').onclick = playPrev;
+$('fullNext').onclick = playNext;
+
+// Shuffle
+$('fullShuffle').onclick = () => {
+  shuffleOn = !shuffleOn;
+  $('fullShuffle').classList.toggle('active', shuffleOn);
+  if (shuffleOn && queue.length > 1) {
+    const current = queue[queueIndex];
+    const rest = queue.filter((_, i) => i !== queueIndex);
+    rest.sort(() => Math.random() - 0.5);
+    queue = [current, ...rest];
+    queueIndex = 0;
+  }
+};
+
+// Repeat
+$('fullRepeat').onclick = () => {
+  repeatMode = (repeatMode + 1) % 3;
+  const icon = $('fullRepeat').querySelector('.material-symbols-rounded');
+  $('fullRepeat').classList.toggle('active', repeatMode > 0);
+  icon.textContent = repeatMode === 2 ? 'repeat_one' : 'repeat';
+};
+
+// Progress seeking
+fullProgressSlider.addEventListener('mousedown', () => seekDragging = true);
+fullProgressSlider.addEventListener('touchstart', () => seekDragging = true);
+fullProgressSlider.addEventListener('input', () => {
+  const pct = fullProgressSlider.value;
+  fullTimeCur.textContent = fmtTime((pct / 100) * audio.duration);
+});
+fullProgressSlider.addEventListener('change', () => {
+  seekDragging = false;
+  if (audio.duration) {
+    audio.currentTime = (fullProgressSlider.value / 100) * audio.duration;
   }
 });
 
-pauseBtn.addEventListener('click', () => {
-  if (ytReady && isPlaying) ytPlayer.pauseVideo();
+// Volume
+fullVolumeSlider.addEventListener('input', () => {
+  audio.volume = fullVolumeSlider.value / 100;
 });
 
-stopBtn.addEventListener('click', () => {
-  if (!ytReady) return;
-  try { ytPlayer.stopVideo(); } catch {}
-  doStop();
-});
+// ═══════════════════════════════════════════════════════════════
+// QUEUE PANEL
+// ═══════════════════════════════════════════════════════════════
 
-prevBtn.addEventListener('click', () => {
-  if (ytReady && activeId) try { ytPlayer.previousVideo(); } catch {}
-});
+$('fullPlayerQueue').onclick = () => {
+  renderQueue();
+  $('queuePanel').classList.add('open');
+};
+$('queueClose').onclick = () => $('queuePanel').classList.remove('open');
 
-nextBtn.addEventListener('click', () => {
-  if (ytReady && activeId) try { ytPlayer.nextVideo(); } catch {}
-});
+$('queueClear').onclick = () => {
+  queue = currentTrack ? [currentTrack] : [];
+  queueIndex = 0;
+  renderQueue();
+  toast('Cola limpiada');
+};
 
-document.getElementById('progBg').addEventListener('click', e => {
-  if (!ytReady || !isPlaying) return;
-  const r = e.currentTarget.getBoundingClientRect();
-  const ratio = (e.clientX - r.left) / r.width;
-  try { ytPlayer.seekTo(ratio * (ytPlayer.getDuration() || 0), true); } catch {}
-});
-
-volSl.addEventListener('input', () => {
-  const v = volSl.value;
-  volVal.textContent = v;
-  volSl.style.background = `linear-gradient(to right, var(--vol-fill) ${v}%, var(--vol-track) ${v}%)`;
-  if (ytReady && ytPlayer) try { ytPlayer.setVolume(parseInt(v)); } catch {}
-});
-
-// ── Stats / contador de visitas ────────────────────────────────
-async function registerVisit() {
-  try { await fetch('/api/visit', { method: 'POST' }); } catch {}
+function renderQueue() {
+  const list = $('queueList');
+  if (queue.length === 0) {
+    list.innerHTML = '<div class="empty-state"><p>La cola esta vacia</p></div>';
+    return;
+  }
+  list.innerHTML = queue.map((track, i) => `
+    <div class="track-item ${i === queueIndex ? 'playing' : ''}"
+         data-track='${JSON.stringify(track).replace(/'/g, "&#39;")}'
+         data-index="${i}"
+         onclick="queueIndex=${i}; playTrack(queue[${i}]); renderQueue();">
+      <div class="track-thumb">
+        ${track.thumbnail ? `<img src="${track.thumbnail}" alt="" loading="lazy" />` : ''}
+      </div>
+      <div class="track-info">
+        <div class="track-title">${esc(track.title)}</div>
+        <div class="track-artist">${esc(track.artist)}</div>
+      </div>
+      <span class="track-duration">${track.duration || ''}</span>
+    </div>
+  `).join('');
 }
 
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════
+
+// Theme
+let theme = localStorage.getItem('neovox_theme') || 'dark';
+if (theme === 'light') {
+  document.documentElement.dataset.theme = 'light';
+  $('themeSwitch').classList.remove('on');
+} else {
+  $('themeSwitch').classList.add('on');
+}
+
+$('themeToggle').onclick = () => {
+  theme = theme === 'dark' ? 'light' : 'dark';
+  document.documentElement.dataset.theme = theme === 'light' ? 'light' : '';
+  $('themeSwitch').classList.toggle('on', theme === 'dark');
+  localStorage.setItem('neovox_theme', theme);
+};
+
+// Copy account in settings
+$('copyAccSettings').onclick = (e) => {
+  e.stopPropagation();
+  navigator.clipboard.writeText(currentAccount);
+  toast('Copiado');
+};
+
+// Logout
+$('logoutBtn').onclick = () => {
+  if (!confirm('Cerrar sesion?')) return;
+  localStorage.removeItem('neovox_account');
+  currentAccount = null;
+  audio.pause();
+  audio.src = '';
+  location.reload();
+};
+
+// Stats
 async function loadStats() {
   try {
-    const res = await fetch('/api/stats');
-    if (!res.ok) return;
+    const res = await fetch(`${API}/api/stats`);
     const s = await res.json();
-    document.getElementById('statTotal').textContent = s.totalVisits.toLocaleString();
-    document.getElementById('statUnique').textContent = s.uniqueUsers.toLocaleString();
-    document.getElementById('statToday').textContent = s.todayVisits.toLocaleString();
+    $('statTotal').textContent = s.totalVisits.toLocaleString();
+    $('statUnique').textContent = s.uniqueUsers.toLocaleString();
+    $('statToday').textContent = s.todayVisits.toLocaleString();
     const d = new Date(s.launchedAt);
-    document.getElementById('statSince').textContent = d.toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
-  } catch {}
-}
-
-// ── PWA Install ───────────────────────────────────────────────
-let deferredInstallPrompt = null;
-const installBtn = document.getElementById('installBtn');
-
-window.addEventListener('beforeinstallprompt', e => {
-  e.preventDefault();
-  deferredInstallPrompt = e;
-  installBtn.style.display = 'flex';
-});
-
-// iOS: no dispara beforeinstallprompt, mostrar indicación manual
-const isIos = /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-
-if (isIos && !isStandalone) {
-  installBtn.style.display = 'flex';
-}
-
-installBtn.addEventListener('click', async () => {
-  if (deferredInstallPrompt) {
-    deferredInstallPrompt.prompt();
-    const { outcome } = await deferredInstallPrompt.userChoice;
-    if (outcome === 'accepted') {
-      installBtn.style.display = 'none';
-      setMsg('APP INSTALADA');
-    }
-    deferredInstallPrompt = null;
-  } else if (isIos) {
-    setMsg('PULSA COMPARTIR > AÑADIR A PANTALLA DE INICIO');
+    $('statSince').textContent = d.toLocaleDateString('es', { day: 'numeric', month: 'short', year: 'numeric' });
+  } catch (e) {
+    console.error('Stats error:', e);
   }
-});
-
-// Ocultar si ya está instalada
-window.addEventListener('appinstalled', () => {
-  installBtn.style.display = 'none';
-  deferredInstallPrompt = null;
-  setMsg('NEOVOX INSTALADA CORRECTAMENTE');
-});
-
-// ── Init ───────────────────────────────────────────────────────
-async function initApp() {
-  addLogoutButton();
-  await registerVisit();
-  await Promise.all([loadFromAPI(), loadStats()]);
-  buildWf();
-  setArmRest();
-  updateDots('stopped');
-  renderList();
 }
 
-// Auto-login si ya tiene cuenta
-if (currentAccount) {
-  initApp();
+// ═══════════════════════════════════════════════════════════════
+// MEDIA SESSION (background playback controls)
+// ═══════════════════════════════════════════════════════════════
+
+if ('mediaSession' in navigator) {
+  navigator.mediaSession.setActionHandler('play', () => { audio.play(); isPlaying = true; updatePlayerUI(); });
+  navigator.mediaSession.setActionHandler('pause', () => { audio.pause(); isPlaying = false; updatePlayerUI(); });
+  navigator.mediaSession.setActionHandler('previoustrack', playPrev);
+  navigator.mediaSession.setActionHandler('nexttrack', playNext);
 }
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════════
+
+function esc(str) {
+  if (!str) return '';
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+let toastTimer = null;
+function toast(msg) {
+  let el = document.querySelector('.toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'toast';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// Expose for inline onclick
+window.showPage = showPage;
+window.openAddModal = openAddModal;
+window.openPlaylistDetail = openPlaylistDetail;
+window.quickPlayPlaylist = quickPlayPlaylist;
+window.playFromList = playFromList;

@@ -4,22 +4,44 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NEOVOX YT-V is a browser-based YouTube playlist player styled as a futuristic cyber-themed turntable. Purely static frontend (HTML + CSS + JS) with no build step. Uses YouTube IFrame API for playback and LocalStorage for playlist persistence.
+NEOVOX Music is a modern web music streaming app (RiMusic-style) that uses YouTube as a backend for audio. Node.js/Express server with PostgreSQL for accounts/playlists, and a vanilla JS SPA frontend.
 
 ## How to Run
 
-Open `index.html` directly in a browser or serve via any static file server. No build or install step required.
+```bash
+npm install
+npm start          # production (node server.js)
+npm run dev        # development (nodemon)
+```
+Requires `DATABASE_URL` in `.env` (PostgreSQL/Neon connection string).
 
 ## Architecture
 
-- **index.html** — Layout structure using Tailwind CSS v4 (`@tailwindcss/browser@4` via CDN). Loads YouTube IFrame API, Google Fonts (Orbitron, Share Tech Mono), and links to `style.css` + `app.js`.
-- **style.css** — All custom styles: `@theme` block for Tailwind custom tokens (cyber color palette, fonts), turntable visuals (vinyl conic gradient, tonearm with needle, platter), scanlines overlay, waveform bars, control buttons, playlist items, cyber-themed inputs, progress bar with glow, and animations (spin, blink, wave).
-- **app.js** — Application logic: YouTube IFrame Player API integration (load/play/pause/stop/next/prev playlists), LocalStorage CRUD for playlists, DOM waveform animation (simulated bars), tonearm arm positioning, progress tracking via polling `getCurrentTime()`/`getDuration()`, volume control, LED dot state indicators.
+### Backend (Node.js + Express)
+- **server.js** — Main server: Express app, PostgreSQL pool (Neon), DB init, CORS, static files, route mounting.
+- **api/account.js** — Anonymous account system: create (POST), login (POST), delete (DELETE). 16-digit numeric account number.
+- **api/playlists.js** — CRUD for saved playlists (max 20). Requires `X-Account-Number` header.
+- **api/search.js** — YouTube search (`ytsr`), playlist items (`ytpl`), video info (`ytdl-core`), trending.
+- **api/audio-proxy.js** — Resolves audio stream URLs via `ytdl-core` and proxies YouTube audio to bypass CORS.
+- **api/stats.js** — Visit tracking and stats.
+- **api/helpers.js** — Shared utilities: `uid()`, `generateAccountNumber()`, `requireAccount` middleware.
+
+### Frontend (public/)
+- **index.html** — SPA layout: auth screen, 4 main pages (Home, Search, Library, Settings), playlist detail page, mini player, full-screen player, queue panel, add playlist modal, bottom navigation.
+- **style.css** — Modern dark/light theme with CSS variables. Material Symbols icons, Inter font. Mobile-first responsive.
+- **app.js** — All client logic: auth flow, page navigation, search (debounced), playlist management, audio playback via HTML5 Audio element + server-side stream proxy, queue/shuffle/repeat, mini/full player, Media Session API.
+
+### Key Endpoints
+- `GET /api/search?q=...` — Search YouTube videos
+- `GET /api/playlist-items/:playlistId` — Get playlist tracks
+- `GET /api/stream-url/:videoId` — Resolve audio stream URL
+- `GET /api/audio-proxy?url=...` — Proxy YouTube audio stream
+- `GET /api/trending` — Get trending music
 
 ## Key Design Decisions
 
-- **YouTube IFrame API**: Player is hidden (1x1px, opacity 0) — audio only. Playback state changes (`onStateChange`) drive all visual updates (vinyl spin, tonearm, waveform, dots).
-- **Tonearm**: CSS `transform: rotate()` with transition. `setArm(true)` = 14deg (on disc), `setArm(false)` = -28deg (rest). Play moves needle onto disc, pause keeps it on disc, stop returns to rest.
-- **Waveform**: Simulated (not real audio analysis). 52 `div` bars animated with `setInterval` + sine wave + random noise.
-- **Playlist vault**: Stored in `localStorage` under key `neovox_playlists_v1`. Each entry has `{id, name, ytId, added}`. YouTube playlist ID extracted from URL via regex `[?&]list=([a-zA-Z0-9_-]+)`.
-- **No framework**: Vanilla JS with cached DOM refs. Single-page, no routing.
+- **Server-side audio resolution**: Uses `@distube/ytdl-core` to resolve audio URLs server-side, then proxies the stream to avoid CORS issues in the browser.
+- **HTML5 Audio**: Uses native `<audio>` element instead of YouTube IFrame API for cleaner playback control.
+- **Anonymous accounts**: Mullvad-style 16-digit number system. No email/password.
+- **No framework**: Vanilla JS SPA with page-based navigation and CSS transitions.
+- **Material Symbols**: Google Material icons with FILL/wght variation settings.

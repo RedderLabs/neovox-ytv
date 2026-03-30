@@ -10,7 +10,9 @@
     "@distube/ytdl-core": "^4.16.12",
     "dotenv": "^17.3.1",
     "express": "^4.21.0",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "ytpl": "^2.3.0",
+    "ytsr": "^3.8.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

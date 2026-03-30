@@ -2,396 +2,415 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NEOVOX YT-V · Tocadiscos Futurista</title>
-  <meta name="description" content="Reproductor de playlists de YouTube con estilo tocadiscos futurista. Arrastra la aguja, ecualizador, modo claro/oscuro. Por RedderLabs." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>NEOVOX · Music</title>
+  <meta name="description" content="NEOVOX Music - Streaming de musica gratuito con interfaz moderna. Busca, descubre y reproduce musica sin limites." />
   <meta name="author" content="RedderLabs" />
   <link rel="canonical" href="https://neovox-ytv-latest.onrender.com/" />
 
-  <!-- Open Graph (Facebook, LinkedIn, WhatsApp, Telegram, Discord) -->
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://neovox-ytv-latest.onrender.com/" />
-  <meta property="og:title" content="NEOVOX YT-V · Tocadiscos Futurista" />
-  <meta property="og:description" content="Reproductor de playlists de YouTube con tocadiscos interactivo, aguja draggable, ecualizador, caratulas y modo claro/oscuro. Desarrollado por RedderLabs." />
+  <meta property="og:title" content="NEOVOX · Music" />
+  <meta property="og:description" content="Streaming de musica gratuito. Busca, descubre y reproduce." />
   <meta property="og:image" content="https://neovox-ytv-latest.onrender.com/logo.png" />
-  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:site_name" content="NEOVOX YT-V" />
-  <meta property="og:locale" content="es_ES" />
 
-  <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="NEOVOX YT-V · Tocadiscos Futurista" />
-  <meta name="twitter:description" content="Reproductor de playlists de YouTube con tocadiscos interactivo y ecualizador. Por RedderLabs." />
-  <meta name="twitter:image" content="https://neovox-ytv-latest.onrender.com/logo.png" />
-
-  <!-- Favicon -->
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" href="/icon-192.png" type="image/png" sizes="192x192" />
+  <meta name="theme-color" content="#0f0f14" />
 
-  <!-- Theme color (barra del navegador en móvil) -->
-  <meta name="theme-color" content="#050810" />
-
-  <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="NEOVOX" />
   <link rel="apple-touch-icon" href="/logo.png" />
 
-  <!-- Tailwind CSS v4 -->
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
-  <!-- Fuentes -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap" rel="stylesheet" />
 
-  <!-- Tailwind theme -->
-  <style type="text/tailwindcss">
-    @theme {
-      --font-orbitron: 'Orbitron', monospace;
-      --font-mono-tech: 'Share Tech Mono', monospace;
-    }
-    body { font-family: var(--font-orbitron); font-size: 14px; }
-  </style>
-
-  <!-- Estilos custom -->
   <link rel="stylesheet" href="style.css" />
 </head>
 
-<body class="min-h-screen flex flex-col items-center">
-
-  <!-- ===== PANTALLA LOGIN (estilo Mullvad) ===== -->
-  <div id="authScreen" class="auth-screen">
+<body>
+  <!-- ===== AUTH SCREEN ===== -->
+  <div id="authScreen" class="auth-overlay">
     <div class="auth-card">
-      <div class="auth-header">
-        <div class="auth-dot"></div>
-        <span class="auth-brand">NEOVOX</span>
-        <span class="auth-sub">YT-V</span>
+      <div class="auth-logo">
+        <div class="auth-logo-icon">
+          <span class="material-symbols-rounded">music_note</span>
+        </div>
+        <h1>NEOVOX</h1>
+        <p>Music streaming</p>
       </div>
 
-      <!-- Vista: Crear cuenta -->
       <div id="authCreate" class="auth-view">
-        <div class="auth-title">NUEVA CUENTA</div>
-        <p class="auth-desc">Sin email. Sin contraseña. Solo un numero.</p>
-        <button id="createAccBtn" class="auth-btn-primary">GENERAR CUENTA ANONIMA</button>
-        <div class="auth-divider"><span>O</span></div>
-        <button id="showLoginBtn" class="auth-btn-secondary">YA TENGO UNA CUENTA</button>
+        <h2>Bienvenido</h2>
+        <p class="auth-desc">Sin email. Sin contrasena. Solo un numero anonimo.</p>
+        <button id="createAccBtn" class="btn-primary">Crear cuenta anonima</button>
+        <div class="auth-divider"><span>o</span></div>
+        <button id="showLoginBtn" class="btn-ghost">Ya tengo una cuenta</button>
       </div>
 
-      <!-- Vista: Mostrar número generado -->
-      <div id="authShow" class="auth-view" style="display:none">
-        <div class="auth-title">TU NUMERO DE CUENTA</div>
-        <div class="auth-warning">Guardalo. Lo necesitaras para iniciar sesion.</div>
-        <div class="auth-number" id="authNumberDisplay">0000000000000000</div>
-        <div class="auth-actions">
-          <button id="copyAccBtn" class="auth-btn-copy">COPIAR</button>
-          <button id="downloadAccBtn" class="auth-btn-copy">DESCARGAR</button>
+      <div id="authShow" class="auth-view hidden">
+        <h2>Tu numero de cuenta</h2>
+        <p class="auth-warning">Guardalo. Lo necesitaras para volver a entrar.</p>
+        <div class="auth-number" id="authNumberDisplay">0000 0000 0000 0000</div>
+        <div class="auth-actions-row">
+          <button id="copyAccBtn" class="btn-outline">Copiar</button>
+          <button id="downloadAccBtn" class="btn-outline">Descargar</button>
         </div>
-        <label class="auth-confirm">
+        <label class="auth-check">
           <input type="checkbox" id="confirmCheck" />
-          <span>Confirmo que he guardado mi numero de cuenta</span>
+          <span>He guardado mi numero de cuenta</span>
         </label>
-        <button id="enterBtn" class="auth-btn-primary" disabled>ENTRAR</button>
+        <button id="enterBtn" class="btn-primary" disabled>Entrar</button>
       </div>
 
-      <!-- Vista: Login -->
-      <div id="authLogin" class="auth-view" style="display:none">
-        <div class="auth-title">INICIAR SESION</div>
-        <p class="auth-desc">Escribe tu numero de cuenta (16 digitos).</p>
-        <input id="loginInput" class="auth-input" type="text" maxlength="19" placeholder="0000 0000 0000 0000" inputmode="numeric" autocomplete="off" />
-        <div id="loginError" class="auth-error" style="display:none"></div>
-        <button id="loginBtn" class="auth-btn-primary">INICIAR SESION</button>
-        <div class="auth-divider"><span>O</span></div>
-        <button id="showCreateBtn" class="auth-btn-secondary">CREAR CUENTA NUEVA</button>
+      <div id="authLogin" class="auth-view hidden">
+        <h2>Iniciar sesion</h2>
+        <p class="auth-desc">Ingresa tu numero de cuenta (16 digitos).</p>
+        <input id="loginInput" class="input-field" type="text" maxlength="19" placeholder="0000 0000 0000 0000" inputmode="numeric" autocomplete="off" />
+        <div id="loginError" class="auth-error hidden"></div>
+        <button id="loginBtn" class="btn-primary">Entrar</button>
+        <div class="auth-divider"><span>o</span></div>
+        <button id="showCreateBtn" class="btn-ghost">Crear cuenta nueva</button>
       </div>
-
-      <div class="auth-footer">Tu numero de cuenta es el unico identificador que necesitas. No almacenamos datos personales.</div>
     </div>
   </div>
 
-  <!-- YouTube IFrame oculto -->
-  <div id="yt-hidden" style="position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;top:0;left:0;">
-    <div id="yt-player"></div>
-  </div>
+  <!-- ===== MAIN APP ===== -->
+  <div id="app" class="app hidden">
 
-  <!-- Header fijo -->
-  <header class="app-header fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-6 h-12 sm:h-14">
-    <div class="flex items-center gap-2">
-      <div class="header-dot"></div>
-      <span class="text-sm sm:text-base tracking-[5px] font-bold" style="color:var(--text-header);font-family:'Orbitron',monospace">NEOVOX</span>
-      <span class="text-xs sm:text-sm tracking-[3px]" style="color:var(--text-sub);font-family:'Share Tech Mono',monospace">YT-V</span>
-    </div>
-    <button class="install-btn" id="installBtn" title="Instalar app" style="display:none">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--btn-fill)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M12 5v14M5 12l7 7 7-7"/><line x1="3" y1="21" x2="21" y2="21"/>
-      </svg>
-      <span class="install-label">INSTALAR</span>
-    </button>
-    <button class="theme-btn" id="themeBtn" title="Cambiar tema">
-      <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="var(--btn-fill)"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-      <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="var(--btn-fill)"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="var(--btn-fill)" stroke-width="2" stroke-linecap="round"/></svg>
-    </button>
-  </header>
+    <!-- ===== PAGES ===== -->
+    <main id="pages" class="pages">
 
-  <!-- Spacer para el header fijo -->
-  <div class="h-14 sm:h-16 shrink-0"></div>
-
-  <!-- Layout principal: columna en móvil, fila en desktop -->
-  <div class="flex flex-col lg:flex-row gap-3 sm:gap-4 w-full max-w-5xl items-stretch p-2 sm:p-4">
-
-    <!-- ===== PLAYER ===== -->
-    <div class="player-panel relative rounded-2xl p-4 sm:p-6 w-full lg:w-[480px] xl:w-[520px] shrink-0">
-
-      <!-- Scanlines overlay -->
-      <div class="scanlines absolute inset-0 rounded-2xl pointer-events-none z-10"></div>
-
-      <!-- Corner accents -->
-      <div class="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2" style="border-color:var(--border-corner)"></div>
-      <div class="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2" style="border-color:var(--border-corner)"></div>
-      <div class="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2" style="border-color:var(--border-corner)"></div>
-      <div class="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2" style="border-color:var(--border-corner)"></div>
-
-      <!-- Status dots -->
-      <div class="flex justify-end items-center mb-2 gap-2">
-        <div class="w-2 h-2 rounded-full" id="d1" style="background:var(--dot-off)"></div>
-        <div class="w-2 h-2 rounded-full" id="d2" style="background:var(--dot-off)"></div>
-        <div class="w-2 h-2 rounded-full animate-blink" id="d3" style="background:var(--dot-on);box-shadow:0 0 7px var(--dot-on)"></div>
-      </div>
-
-      <!-- Turntable (responsive via CSS) -->
-      <div class="turntable-area relative flex justify-center items-center mb-4">
-        <div class="platter-wrap absolute rounded-full" style="border:1px solid var(--border-panel)"></div>
-        <div class="vinyl-wrap vinyl-bg absolute rounded-full will-change-transform" id="vinyl">
-          <div class="absolute rounded-full groove-ring" style="width:95%;height:95%;top:2.5%;left:2.5%"></div>
-          <div class="absolute rounded-full groove-ring" style="width:86%;height:86%;top:7%;left:7%"></div>
-          <div class="absolute rounded-full groove-ring" style="width:77%;height:77%;top:11.5%;left:11.5%"></div>
-          <div class="absolute rounded-full groove-ring" style="width:68%;height:68%;top:16%;left:16%"></div>
-          <div class="absolute rounded-full groove-ring" style="width:59%;height:59%;top:20.5%;left:20.5%"></div>
-          <div class="absolute rounded-full groove-ring" style="width:50%;height:50%;top:25%;left:25%"></div>
-          <div id="vinylLabel" class="vinyl-label absolute rounded-full flex flex-col items-center justify-center z-10 label-center overflow-hidden">
-            <div id="labelCover" class="label-cover"></div>
-            <span id="labelText1" class="label-text font-bold tracking-[1.5px] text-[8px] sm:text-[9px]" style="color:var(--text-label)">CYBER</span>
-            <span id="labelText2" class="label-text mt-0.5 text-[7px] sm:text-[8px]" style="font-family:'Share Tech Mono',monospace;color:var(--text-label-sub)">33&#8531;</span>
+      <!-- HOME -->
+      <section id="page-home" class="page active">
+        <header class="page-header">
+          <h1>Inicio</h1>
+          <button class="icon-btn" id="settingsFromHome" onclick="showPage('settings')">
+            <span class="material-symbols-rounded">settings</span>
+          </button>
+        </header>
+        <div class="page-content">
+          <div class="section-block">
+            <h2 class="section-title">Acceso rapido</h2>
+            <div class="quick-picks" id="quickPicks">
+              <div class="empty-state">
+                <span class="material-symbols-rounded">library_music</span>
+                <p>Agrega playlists desde la biblioteca</p>
+              </div>
+            </div>
           </div>
-          <div class="vinyl-axle absolute rounded-full z-20 axle-center"></div>
-        </div>
-        <div class="tonearm-container" id="tonearm">
-          <div class="tonearm-pivot absolute w-5 h-5 rounded-full z-10" style="top:10px;right:10px;"></div>
-          <div class="tonearm-arm">
-            <div class="tonearm-head">
-              <div class="tonearm-needle"></div>
+          <div class="section-block">
+            <h2 class="section-title">Tendencias</h2>
+            <div class="track-list" id="trendingList">
+              <div class="loading-spinner"><div class="spinner"></div></div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Waveform -->
-      <div class="flex items-center justify-center gap-0.5 h-7 sm:h-8 mb-3 px-2" id="wf"></div>
-
-      <!-- Track info -->
-      <div class="text-center mb-3 min-h-[40px]">
-        <div class="text-xs sm:text-sm tracking-[2px] font-bold mb-1 truncate max-w-full mx-auto" id="tiName" style="color:var(--text-title)">· NEOVOX YT-V ·</div>
-        <div class="text-[11px] sm:text-xs tracking-[2px]" style="font-family:'Share Tech Mono',monospace;color:var(--text-sub)" id="tiSub">SELECCIONA UNA PLAYLIST</div>
-      </div>
-
-      <!-- Progreso -->
-      <div class="mb-3 px-1">
-        <div class="h-1 sm:h-1 rounded-full relative cursor-pointer mb-1.5" id="progBg" style="background:var(--prog-bg)">
-          <div class="prog-fill h-full rounded-full relative" id="progFill" style="width:0%"></div>
-        </div>
-        <div class="flex justify-between prog-time">
-          <span id="tCur">0:00</span>
-          <span id="tTot">0:00</span>
-        </div>
-      </div>
-
-      <!-- Controles -->
-      <div class="flex justify-center items-center gap-2 sm:gap-3 mb-3">
-        <button class="ctrl-btn w-10 h-10 sm:w-10 sm:h-10" id="prevBtn">
-          <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="10,1 3,6 10,11"/><rect x="1" y="1" width="2" height="10" rx="1"/></svg>
-        </button>
-        <button class="ctrl-btn w-12 h-12 sm:w-12 sm:h-12" id="stopBtn">
-          <svg width="16" height="16" viewBox="0 0 14 14"><rect x="2" y="2" width="10" height="10" rx="1"/></svg>
-        </button>
-        <button class="ctrl-btn w-16 h-16 sm:w-16 sm:h-16" id="playBtn" style="border-color:var(--btn-active-border)">
-          <svg width="22" height="22" viewBox="0 0 18 18" id="playIco"><polygon points="6,3 15,9 6,15"/></svg>
-        </button>
-        <button class="ctrl-btn w-12 h-12 sm:w-12 sm:h-12" id="pauseBtn">
-          <svg width="16" height="16" viewBox="0 0 14 14"><rect x="2" y="2" width="4" height="10" rx="1"/><rect x="8" y="2" width="4" height="10" rx="1"/></svg>
-        </button>
-        <button class="ctrl-btn w-10 h-10 sm:w-10 sm:h-10" id="nextBtn">
-          <svg width="14" height="14" viewBox="0 0 12 12"><polygon points="2,1 9,6 2,11"/><rect x="9" y="1" width="2" height="10" rx="1"/></svg>
-        </button>
-      </div>
-
-      <!-- Ecualizador -->
-      <div class="eq-panel rounded-lg p-3 mb-3 mx-1" style="background:var(--input-bg);border:1px solid var(--input-border)">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-[10px] tracking-[2px]" style="color:var(--text-vol)">EQUALIZER</span>
-          <div class="flex gap-1">
-            <button class="eq-preset-btn active" data-preset="flat">FLAT</button>
-            <button class="eq-preset-btn" data-preset="bass">BASS</button>
-            <button class="eq-preset-btn" data-preset="vocal">VOCAL</button>
-            <button class="eq-preset-btn" data-preset="treble">TREBLE</button>
+      <!-- SEARCH -->
+      <section id="page-search" class="page">
+        <header class="page-header">
+          <div class="search-bar">
+            <span class="material-symbols-rounded search-icon">search</span>
+            <input type="text" id="searchInput" placeholder="Buscar canciones, artistas..." autocomplete="off" />
+            <button class="search-clear hidden" id="searchClear">
+              <span class="material-symbols-rounded">close</span>
+            </button>
+          </div>
+        </header>
+        <div class="page-content">
+          <div id="searchResults" class="track-list">
+            <div class="empty-state">
+              <span class="material-symbols-rounded">travel_explore</span>
+              <p>Busca tu musica favorita</p>
+            </div>
           </div>
         </div>
-        <div class="flex items-end justify-between gap-1 h-[65px]" id="eqSliders">
-          <div class="eq-band" data-band="60"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">60</span></div>
-          <div class="eq-band" data-band="150"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">150</span></div>
-          <div class="eq-band" data-band="400"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">400</span></div>
-          <div class="eq-band" data-band="1k"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">1K</span></div>
-          <div class="eq-band" data-band="2.5k"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">2.5K</span></div>
-          <div class="eq-band" data-band="6k"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">6K</span></div>
-          <div class="eq-band" data-band="12k"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">12K</span></div>
-          <div class="eq-band" data-band="16k"><input type="range" class="eq-slider" min="-12" max="12" value="0" orient="vertical"><span class="eq-label">16K</span></div>
-        </div>
-      </div>
+      </section>
 
-      <!-- Volumen + Velocidad -->
-      <div class="flex flex-col gap-2 px-1 mb-2">
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] tracking-[2px] min-w-[28px]" style="color:var(--text-vol)">VOL</span>
-          <input type="range" class="vol-slider flex-1" id="volSl" min="0" max="100" value="80"
-                 style="background:linear-gradient(to right, var(--vol-fill) 80%, var(--vol-track) 80%)" />
-          <span class="text-[11px] min-w-[28px] text-right" style="font-family:'Share Tech Mono',monospace;color:var(--text-vol-val)" id="volVal">80</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <span class="text-[10px] tracking-[2px] min-w-[28px]" style="color:var(--text-vol)">SPD</span>
-          <div class="speed-btns flex-1 flex items-center justify-between gap-1" id="speedBtns">
-            <button class="speed-btn" data-speed="0.5">0.5x</button>
-            <button class="speed-btn" data-speed="0.75">0.75x</button>
-            <button class="speed-btn active" data-speed="1">1x</button>
-            <button class="speed-btn" data-speed="1.25">1.25x</button>
-            <button class="speed-btn" data-speed="1.5">1.5x</button>
-            <button class="speed-btn" data-speed="2">2x</button>
+      <!-- LIBRARY -->
+      <section id="page-library" class="page">
+        <header class="page-header">
+          <h1>Biblioteca</h1>
+          <button class="icon-btn" id="addPlaylistBtn">
+            <span class="material-symbols-rounded">add</span>
+          </button>
+        </header>
+        <div class="page-content">
+          <div class="playlist-grid" id="playlistGrid">
+            <div class="empty-state">
+              <span class="material-symbols-rounded">queue_music</span>
+              <p>Aun no tienes playlists</p>
+              <button class="btn-primary btn-sm" id="addFirstPlaylist">Agregar playlist</button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Mensaje sistema -->
-      <div class="text-center text-[10px] sm:text-[11px] tracking-[1px] min-h-[14px]"
-           style="font-family:'Share Tech Mono',monospace;color:var(--text-sys)" id="sysmsg">SELECCIONA UNA PLAYLIST DEL PANEL</div>
+      <!-- SETTINGS -->
+      <section id="page-settings" class="page">
+        <header class="page-header">
+          <h1>Ajustes</h1>
+        </header>
+        <div class="page-content">
+          <div class="settings-group">
+            <h3 class="settings-label">Cuenta</h3>
+            <div class="settings-item" id="settingsAccount">
+              <div class="settings-item-left">
+                <span class="material-symbols-rounded">person</span>
+                <div>
+                  <div class="settings-item-title">Numero de cuenta</div>
+                  <div class="settings-item-sub" id="settingsAccNum">----</div>
+                </div>
+              </div>
+              <button class="btn-outline btn-xs" id="copyAccSettings">Copiar</button>
+            </div>
+            <div class="settings-item" id="logoutBtn">
+              <div class="settings-item-left">
+                <span class="material-symbols-rounded">logout</span>
+                <div>
+                  <div class="settings-item-title">Cerrar sesion</div>
+                  <div class="settings-item-sub">Volver a la pantalla de login</div>
+                </div>
+              </div>
+              <span class="material-symbols-rounded arrow">chevron_right</span>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-label">Apariencia</h3>
+            <div class="settings-item" id="themeToggle">
+              <div class="settings-item-left">
+                <span class="material-symbols-rounded">dark_mode</span>
+                <div>
+                  <div class="settings-item-title">Tema oscuro</div>
+                  <div class="settings-item-sub">Cambiar entre claro y oscuro</div>
+                </div>
+              </div>
+              <div class="toggle-switch" id="themeSwitch"><div class="toggle-knob"></div></div>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-label">Reproduccion</h3>
+            <div class="settings-item">
+              <div class="settings-item-left">
+                <span class="material-symbols-rounded">graphic_eq</span>
+                <div>
+                  <div class="settings-item-title">Calidad de audio</div>
+                  <div class="settings-item-sub" id="qualityLabel">Alta</div>
+                </div>
+              </div>
+              <span class="material-symbols-rounded arrow">chevron_right</span>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <h3 class="settings-label">Estadisticas</h3>
+            <div class="stats-grid">
+              <div class="stat-card">
+                <span class="stat-num" id="statTotal">-</span>
+                <span class="stat-lbl">Visitas totales</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num" id="statUnique">-</span>
+                <span class="stat-lbl">Usuarios unicos</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num" id="statToday">-</span>
+                <span class="stat-lbl">Visitas hoy</span>
+              </div>
+              <div class="stat-card">
+                <span class="stat-num" id="statSince">-</span>
+                <span class="stat-lbl">Online desde</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-footer">
+            <p>NEOVOX Music v2.0</p>
+            <p>Desarrollado por <a href="https://redderlabs.com" target="_blank">RedderLabs</a></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- PLAYLIST DETAIL -->
+      <section id="page-playlist" class="page page-detail">
+        <header class="page-header">
+          <button class="icon-btn" id="playlistBack">
+            <span class="material-symbols-rounded">arrow_back</span>
+          </button>
+          <h1 id="playlistDetailTitle" class="truncate">Playlist</h1>
+          <button class="icon-btn" id="playlistDelete">
+            <span class="material-symbols-rounded">delete_outline</span>
+          </button>
+        </header>
+        <div class="page-content">
+          <div class="playlist-hero" id="playlistHero">
+            <div class="playlist-hero-art" id="playlistHeroArt"></div>
+            <div class="playlist-hero-info">
+              <h2 id="playlistHeroTitle">Playlist</h2>
+              <p id="playlistHeroSub">0 canciones</p>
+              <div class="playlist-hero-actions">
+                <button class="btn-primary btn-play-all" id="playAllBtn">
+                  <span class="material-symbols-rounded">play_arrow</span>
+                  Reproducir
+                </button>
+                <button class="btn-outline btn-shuffle" id="shuffleBtn">
+                  <span class="material-symbols-rounded">shuffle</span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="track-list" id="playlistTracks">
+            <div class="loading-spinner"><div class="spinner"></div></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ===== MINI PLAYER ===== -->
+    <div id="miniPlayer" class="mini-player hidden">
+      <div class="mini-progress" id="miniProgress"></div>
+      <div class="mini-player-content" id="miniPlayerTap">
+        <div class="mini-thumb" id="miniThumb"></div>
+        <div class="mini-info">
+          <div class="mini-title" id="miniTitle">Sin reproduccion</div>
+          <div class="mini-artist" id="miniArtist">--</div>
+        </div>
+        <div class="mini-controls">
+          <button class="mini-btn" id="miniPrev">
+            <span class="material-symbols-rounded">skip_previous</span>
+          </button>
+          <button class="mini-btn mini-play" id="miniPlayBtn">
+            <span class="material-symbols-rounded" id="miniPlayIcon">play_arrow</span>
+          </button>
+          <button class="mini-btn" id="miniNext">
+            <span class="material-symbols-rounded">skip_next</span>
+          </button>
+        </div>
+      </div>
     </div>
 
-    <!-- ===== PANEL PLAYLISTS ===== -->
-    <div class="playlist-panel flex-1 rounded-2xl p-4 sm:p-5 w-full min-w-0">
+    <!-- ===== FULL PLAYER ===== -->
+    <div id="fullPlayer" class="full-player">
+      <div class="full-player-bg" id="fullPlayerBg"></div>
+      <div class="full-player-content">
+        <header class="full-player-header">
+          <button class="icon-btn" id="fullPlayerClose">
+            <span class="material-symbols-rounded">keyboard_arrow_down</span>
+          </button>
+          <span class="full-player-from" id="fullPlayerFrom">Reproduciendo</span>
+          <button class="icon-btn" id="fullPlayerQueue">
+            <span class="material-symbols-rounded">queue_music</span>
+          </button>
+        </header>
 
-      <!-- Header panel -->
-      <div class="flex justify-between items-center mb-3 sm:mb-4">
-        <span class="text-xs sm:text-sm tracking-[3px] font-bold" style="color:var(--text-header)">PLAYLIST VAULT</span>
-        <span class="text-[11px] tracking-[1px]" style="font-family:'Share Tech Mono',monospace;color:var(--counter-color)" id="counter">0 LISTAS</span>
-      </div>
-
-      <!-- Formulario añadir -->
-      <div class="rounded-xl p-3 sm:p-4 mb-4" style="background:var(--form-bg);border:1px solid var(--form-border)">
-        <div class="mb-3">
-          <label class="block text-[10px] tracking-[2px] mb-1.5" style="color:var(--label-color)">NOMBRE</label>
-          <input class="cyber-input" id="plName" placeholder="Mi playlist favorita" maxlength="40" />
+        <div class="full-art-wrap">
+          <div class="full-art" id="fullArt"></div>
         </div>
-        <div class="mb-3">
-          <label class="block text-[10px] tracking-[2px] mb-1.5" style="color:var(--label-color)">URL DE YOUTUBE</label>
-          <input class="cyber-input" id="plUrl" placeholder="https://youtube.com/playlist?list=..." />
+
+        <div class="full-info">
+          <div class="full-title" id="fullTitle">Sin reproduccion</div>
+          <div class="full-artist" id="fullArtist">--</div>
         </div>
-        <button id="addBtn" class="add-btn w-full rounded-lg py-2.5 sm:py-2 text-[11px] tracking-[2px] font-bold cursor-pointer transition-all">
-          + AÑADIR A LA VAULT
-        </button>
-      </div>
 
-      <!-- Lista de playlists -->
-      <div class="pl-scroll flex flex-col gap-2 overflow-y-auto pr-0.5" style="max-height:min(360px, 50vh)" id="plList"></div>
-
-      <!-- Tracklist de la playlist activa -->
-      <div id="tracklistPanel" style="display:none" class="mt-3 rounded-lg p-3" style="background:var(--input-bg);border:1px solid var(--input-border)">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-[10px] tracking-[2px]" style="color:var(--text-vol);font-family:'Share Tech Mono',monospace">TRACKLIST</span>
-          <span class="text-[10px] tracking-[1px]" style="color:var(--counter-color);font-family:'Share Tech Mono',monospace" id="trackCount"></span>
-        </div>
-        <div class="pl-scroll flex flex-col gap-1 overflow-y-auto pr-0.5" style="max-height:min(280px, 40vh)" id="tracklistItems"></div>
-      </div>
-
-      <!-- Stats -->
-      <div class="stats-bar mt-4 rounded-lg p-3 flex items-center justify-between gap-3 flex-wrap" style="background:var(--input-bg);border:1px solid var(--input-border)">
-        <div class="flex items-center gap-4">
-          <div class="stat-item">
-            <span class="stat-value" id="statTotal">-</span>
-            <span class="stat-label">VISITAS</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value" id="statUnique">-</span>
-            <span class="stat-label">USUARIOS</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-value" id="statToday">-</span>
-            <span class="stat-label">HOY</span>
+        <div class="full-progress">
+          <input type="range" class="progress-slider" id="fullProgressSlider" min="0" max="100" value="0" />
+          <div class="full-times">
+            <span id="fullTimeCur">0:00</span>
+            <span id="fullTimeTotal">0:00</span>
           </div>
         </div>
-        <div class="stat-item">
-          <span class="stat-value text-[10px]" id="statSince">-</span>
-          <span class="stat-label">ONLINE DESDE</span>
+
+        <div class="full-controls">
+          <button class="full-ctrl-btn" id="fullShuffle">
+            <span class="material-symbols-rounded">shuffle</span>
+          </button>
+          <button class="full-ctrl-btn" id="fullPrev">
+            <span class="material-symbols-rounded">skip_previous</span>
+          </button>
+          <button class="full-play-btn" id="fullPlayBtn">
+            <span class="material-symbols-rounded" id="fullPlayIcon">play_arrow</span>
+          </button>
+          <button class="full-ctrl-btn" id="fullNext">
+            <span class="material-symbols-rounded">skip_next</span>
+          </button>
+          <button class="full-ctrl-btn" id="fullRepeat">
+            <span class="material-symbols-rounded">repeat</span>
+          </button>
+        </div>
+
+        <div class="full-volume">
+          <span class="material-symbols-rounded vol-icon">volume_up</span>
+          <input type="range" class="volume-slider" id="fullVolumeSlider" min="0" max="100" value="80" />
         </div>
       </div>
     </div>
+
+    <!-- ===== QUEUE PANEL ===== -->
+    <div id="queuePanel" class="queue-panel">
+      <header class="queue-header">
+        <button class="icon-btn" id="queueClose">
+          <span class="material-symbols-rounded">close</span>
+        </button>
+        <h2>Cola de reproduccion</h2>
+        <button class="btn-ghost btn-xs" id="queueClear">Limpiar</button>
+      </header>
+      <div class="queue-list" id="queueList"></div>
+    </div>
+
+    <!-- ===== ADD PLAYLIST MODAL ===== -->
+    <div id="addModal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <h2>Agregar playlist</h2>
+        <p>Pega la URL de una playlist de YouTube</p>
+        <div class="modal-field">
+          <label>Nombre</label>
+          <input type="text" id="modalPlName" class="input-field" placeholder="Mi playlist" maxlength="40" />
+        </div>
+        <div class="modal-field">
+          <label>URL de YouTube</label>
+          <input type="text" id="modalPlUrl" class="input-field" placeholder="https://youtube.com/playlist?list=..." />
+        </div>
+        <div class="modal-actions">
+          <button class="btn-ghost" id="modalCancel">Cancelar</button>
+          <button class="btn-primary" id="modalAdd">Agregar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== BOTTOM NAV ===== -->
+    <nav class="bottom-nav" id="bottomNav">
+      <button class="nav-item active" data-page="home">
+        <span class="material-symbols-rounded">home</span>
+        <span class="nav-label">Inicio</span>
+      </button>
+      <button class="nav-item" data-page="search">
+        <span class="material-symbols-rounded">search</span>
+        <span class="nav-label">Buscar</span>
+      </button>
+      <button class="nav-item" data-page="library">
+        <span class="material-symbols-rounded">library_music</span>
+        <span class="nav-label">Biblioteca</span>
+      </button>
+      <button class="nav-item" data-page="settings">
+        <span class="material-symbols-rounded">settings</span>
+        <span class="nav-label">Ajustes</span>
+      </button>
+    </nav>
   </div>
 
-  <!-- Footer -->
-  <footer class="app-footer w-full max-w-5xl mt-6 mb-4 px-2 sm:px-4">
-    <!-- Guía de uso -->
-    <div class="guide-panel rounded-2xl p-4 sm:p-5 mb-4">
-      <div class="flex items-center gap-2 mb-3">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="var(--dot-on)"><circle cx="12" cy="12" r="10" fill="none" stroke="var(--dot-on)" stroke-width="2"/><path d="M12 16v-4M12 8h.01" stroke="var(--dot-on)" stroke-width="2" stroke-linecap="round"/></svg>
-        <span class="text-xs sm:text-sm tracking-[3px] font-bold" style="color:var(--text-header)">COMO USAR NEOVOX</span>
-      </div>
+  <!-- Hidden audio element -->
+  <audio id="audioEl" preload="auto" crossorigin="anonymous"></audio>
 
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="guide-section">
-          <h3 class="guide-title">CREAR PLAYLIST EN YOUTUBE</h3>
-          <ol class="guide-steps">
-            <li>Abre <strong>youtube.com</strong> y busca canciones</li>
-            <li>En cualquier video, haz clic en <strong>Guardar</strong> (icono de lista bajo el video)</li>
-            <li>Selecciona <strong>Crear nueva playlist</strong> y dale un nombre</li>
-            <li>Repite para cada cancion que quieras agregar</li>
-            <li>Ve a tu <strong>Biblioteca > Playlists</strong> y abre la playlist</li>
-            <li>Copia la <strong>URL</strong> de la barra de direcciones (debe contener <code>?list=</code>)</li>
-          </ol>
-        </div>
-
-        <div class="guide-section">
-          <h3 class="guide-title">CARGAR EN NEOVOX</h3>
-          <ol class="guide-steps">
-            <li>En el panel <strong>PLAYLIST VAULT</strong>, escribe un nombre para tu lista</li>
-            <li>Pega la <strong>URL de YouTube</strong> que copiaste</li>
-            <li>Pulsa <strong>+ AÑADIR A LA VAULT</strong></li>
-            <li>Haz clic en la playlist o en su boton <strong>Play</strong> para cargarla</li>
-            <li>Usa los controles del tocadiscos: <strong>Play, Pause, Stop, Prev, Next</strong></li>
-            <li>Puedes <strong>arrastrar la aguja</strong> sobre el disco para saltar a una posicion</li>
-          </ol>
-          <div class="guide-tip">
-            <strong>TIP:</strong> Puedes guardar hasta 20 playlists. Ajusta la velocidad (SPD) y el ecualizador a tu gusto.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Credits -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-2 py-3 px-4 rounded-xl" style="background:var(--input-bg);border:1px solid var(--input-border)">
-      <div class="flex items-center gap-2">
-        <div class="w-2 h-2 rounded-full" style="background:var(--dot-on);box-shadow:0 0 6px var(--dot-on)"></div>
-        <span class="text-[11px] sm:text-xs tracking-[2px]" style="color:var(--text-sub);font-family:'Share Tech Mono',monospace">
-          DESARROLLADO POR <a href="https://redderlabs.com" target="_blank" rel="noopener" class="footer-link">REDDERLABS.COM</a>
-        </span>
-      </div>
-      <span class="text-[10px] tracking-[1px]" style="color:var(--text-sub);font-family:'Share Tech Mono',monospace;opacity:0.6">NEOVOX YT-V &copy; 2025</span>
-    </div>
-  </footer>
-
-  <!-- YouTube IFrame API -->
-  <script src="https://www.youtube.com/iframe_api"></script>
   <script src="app.js"></script>
-
-  <!-- Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('/sw.js').catch(() => {});

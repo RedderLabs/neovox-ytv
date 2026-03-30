@@ -1,82 +1,87 @@
 import 'package:dio/dio.dart';
-import '../models/playlist.dart';
 
 class ApiService {
-  final Dio _dio;
-  String? _accountNumber;
+  static const _baseUrl = 'https://neovox-ytv-latest.onrender.com';
+  static final _dio = Dio(BaseOptions(
+    baseUrl: _baseUrl,
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 15),
+  ));
 
-  // Cambiar a tu URL de producción
-  //static const String baseUrl = 'http://localhost:3000';
-  static const String baseUrl = 'https://neovox-ytv-latest.onrender.com';
-  
-  ApiService()
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 60),
-          receiveTimeout: const Duration(seconds: 60),
-        ),
-      ) {
-    // Log de peticiones para debug
-    _dio.interceptors.add(
-      LogInterceptor(requestBody: true, responseBody: true, error: true),
-    );
-  }
+  static String? accountNumber;
 
-  void setAccount(String accountNumber) {
-    _accountNumber = accountNumber;
-    _dio.options.headers['X-Account-Number'] = accountNumber;
-  }
+  static Map<String, String> get _authHeaders => {'X-Account-Number': accountNumber ?? ''};
 
-  String? get accountNumber => _accountNumber;
-
-  // ── Auth ──
-  Future<String> createAccount() async {
+  // ── Account ───────────────────────────────────────────────
+  static Future<String> createAccount() async {
     final res = await _dio.post('/api/account/create');
-    return res.data['accountNumber'] as String;
+    return res.data['accountNumber'];
   }
 
-  Future<bool> login(String accountNumber) async {
+  static Future<bool> login(String number) async {
     try {
-      await _dio.post(
-        '/api/account/login',
-        data: {'accountNumber': accountNumber},
-      );
-      setAccount(accountNumber);
-      return true;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) return false;
-      rethrow;
+      final res = await _dio.post('/api/account/login',
+          data: {'accountNumber': number},
+          options: Options(headers: {'Content-Type': 'application/json'}));
+      return res.statusCode == 200;
+    } on DioException {
+      return false;
     }
   }
 
-  // ── Playlists ──
-  Future<List<Playlist>> getPlaylists() async {
-    final res = await _dio.get('/api/playlists');
-    return (res.data as List)
-        .map((j) => Playlist.fromJson(j as Map<String, dynamic>))
-        .toList();
+  static Future<void> deleteAccount() async {
+    await _dio.delete('/api/account', options: Options(headers: _authHeaders));
   }
 
-  Future<Playlist> addPlaylist(String name, String ytId) async {
-    final res = await _dio.post(
-      '/api/playlists',
-      data: {'name': name, 'ytId': ytId},
-    );
-    return Playlist.fromJson(res.data as Map<String, dynamic>);
+  // ── Playlists ─────────────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> getPlaylists() async {
+    final res = await _dio.get('/api/playlists', options: Options(headers: _authHeaders));
+    return List<Map<String, dynamic>>.from(res.data);
   }
 
-  Future<void> deletePlaylist(String id) async {
-    await _dio.delete('/api/playlists/$id');
+  static Future<Map<String, dynamic>> addPlaylist(String name, String ytId) async {
+    final res = await _dio.post('/api/playlists',
+        data: {'name': name, 'ytId': ytId},
+        options: Options(headers: {..._authHeaders, 'Content-Type': 'application/json'}));
+    return Map<String, dynamic>.from(res.data);
   }
 
-  Future<void> deleteAccount() async {
-    await _dio.delete('/api/account');
+  static Future<void> deletePlaylist(String id) async {
+    await _dio.delete('/api/playlists/$id', options: Options(headers: _authHeaders));
   }
 
-  /// Resolver URL del stream de audio en el servidor (para web, evita CORS)
-  Future<String> getStreamUrl(String videoId) async {
+  // ── Search & Discovery ────────────────────────────────────
+  static Future<List<Map<String, dynamic>>> search(String query, {int limit = 25}) async {
+    final res = await _dio.get('/api/search', queryParameters: {'q': query, 'limit': limit});
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  static Future<List<Map<String, dynamic>>> trending() async {
+    final res = await _dio.get('/api/trending');
+    return List<Map<String, dynamic>>.from(res.data);
+  }
+
+  static Future<Map<String, dynamic>> getPlaylistItems(String playlistId) async {
+    final res = await _dio.get('/api/playlist-items/$playlistId');
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  // ── Audio ─────────────────────────────────────────────────
+  static Future<String> getStreamUrl(String videoId) async {
     final res = await _dio.get('/api/stream-url/$videoId');
-    return res.data['url'] as String;
+    final url = res.data['url'] as String;
+    return '$_baseUrl/api/audio-proxy?url=${Uri.encodeComponent(url)}';
+  }
+
+  // ── Stats ─────────────────────────────────────────────────
+  static Future<Map<String, dynamic>> getStats() async {
+    final res = await _dio.get('/api/stats');
+    return Map<String, dynamic>.from(res.data);
+  }
+
+  static Future<void> registerVisit() async {
+    try {
+      await _dio.post('/api/visit');
+    } catch (_) {}
   }
 }

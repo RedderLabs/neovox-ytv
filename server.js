@@ -7,6 +7,7 @@ const accountRoutes = require('./api/account');
 const playlistRoutes = require('./api/playlists');
 const statsRoutes = require('./api/stats');
 const audioProxyRoutes = require('./api/audio-proxy');
+const searchRoutes = require('./api/search');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -74,6 +75,7 @@ app.use('/api/account', accountRoutes(pool));
 app.use('/api/playlists', playlistRoutes(pool));
 app.use('/api', statsRoutes(pool));
 app.use('/api', audioProxyRoutes());
+app.use('/api', searchRoutes());
 
 // ── Start ──────────────────────────────────────────────────────
 const HOST = process.env.HOST || '0.0.0.0';
