@@ -1,10 +1,9 @@
-const { Router } = require('express');
-const ytsr = require('ytsr');
+const YouTube = require('youtube-sr').default;
 const ytpl = require('ytpl');
 const ytdl = require('@distube/ytdl-core');
 
 module.exports = function searchRoutes() {
-  const router = Router();
+  const router = require('express').Router();
 
   // GET /api/search?q=query&limit=20
   router.get('/search', async (req, res) => {
@@ -12,20 +11,16 @@ module.exports = function searchRoutes() {
       const { q, limit = 20 } = req.query;
       if (!q) return res.status(400).json({ error: 'Missing query' });
 
-      const filters = await ytsr.getFilters(q);
-      const videoFilter = filters.get('Type')?.get('Video');
-      const results = await ytsr(videoFilter?.url || q, { limit: parseInt(limit) });
+      const results = await YouTube.search(q, { limit: parseInt(limit), type: 'video' });
 
-      const items = results.items
-        .filter(i => i.type === 'video')
-        .map(v => ({
-          videoId: v.id,
-          title: v.title,
-          artist: v.author?.name || 'Unknown',
-          thumbnail: v.bestThumbnail?.url || v.thumbnails?.[0]?.url || '',
-          duration: v.duration || '0:00',
-          views: v.views || 0,
-        }));
+      const items = results.map(v => ({
+        videoId: v.id,
+        title: v.title || '',
+        artist: v.channel?.name || 'Unknown',
+        thumbnail: v.thumbnail?.url || '',
+        duration: v.durationFormatted || '0:00',
+        views: v.views || 0,
+      }));
 
       res.json(items);
     } catch (e) {
@@ -87,41 +82,20 @@ module.exports = function searchRoutes() {
     }
   });
 
-  // GET /api/suggestions?q=query
-  router.get('/suggestions', async (req, res) => {
-    try {
-      const { q } = req.query;
-      if (!q) return res.json([]);
-      const results = await ytsr.getFilters(q);
-      // Return the search refinements as suggestions
-      const suggestions = [];
-      for (const [, filter] of results) {
-        for (const [name] of filter) {
-          if (name && name !== 'Video' && name !== 'Channel' && name !== 'Playlist') {
-            suggestions.push(name);
-          }
-        }
-      }
-      res.json(suggestions.slice(0, 8));
-    } catch (e) {
-      res.json([]);
-    }
-  });
-
-  // GET /api/trending — get popular music
+  // GET /api/trending — popular music
   router.get('/trending', async (req, res) => {
     try {
-      const results = await ytsr('trending music 2026', { limit: 20 });
-      const items = results.items
-        .filter(i => i.type === 'video')
-        .map(v => ({
-          videoId: v.id,
-          title: v.title,
-          artist: v.author?.name || 'Unknown',
-          thumbnail: v.bestThumbnail?.url || v.thumbnails?.[0]?.url || '',
-          duration: v.duration || '0:00',
-          views: v.views || 0,
-        }));
+      const results = await YouTube.search('popular music 2025', { limit: 20, type: 'video' });
+
+      const items = results.map(v => ({
+        videoId: v.id,
+        title: v.title || '',
+        artist: v.channel?.name || 'Unknown',
+        thumbnail: v.thumbnail?.url || '',
+        duration: v.durationFormatted || '0:00',
+        views: v.views || 0,
+      }));
+
       res.json(items);
     } catch (e) {
       console.error('Trending error:', e.message);
