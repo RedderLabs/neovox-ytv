@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:just_audio/just_audio.dart';
 import '../models/playlist.dart';
+import '../services/api_service.dart';
 import 'youtube_service.dart';
 
 /// Handler que corre como Foreground Service en Android / AVAudioSession en iOS
@@ -69,10 +71,21 @@ class NeovoxAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler
     ));
 
     try {
-      // Obtener URL del stream (desde el dispositivo → IP residencial)
-      final url = await _yt.getAudioStreamUrl(track.videoId);
-      track.streamUrl = url;
-      await _player.setUrl(url);
+      String playUrl;
+      if (kIsWeb) {
+        // En web: resolver URL en el servidor (evita CORS de youtube_explode)
+        // y proxear el audio también por el servidor
+        final api = ApiService();
+        final url = await api.getStreamUrl(track.videoId);
+        track.streamUrl = url;
+        playUrl = '${ApiService.baseUrl}/api/audio-proxy?url=${Uri.encodeComponent(url)}';
+      } else {
+        // En móvil/desktop: resolver directamente con youtube_explode
+        final url = await _yt.getAudioStreamUrl(track.videoId);
+        track.streamUrl = url;
+        playUrl = url;
+      }
+      await _player.setUrl(playUrl);
       await _player.play();
     } catch (e) {
       // Si falla, saltar al siguiente

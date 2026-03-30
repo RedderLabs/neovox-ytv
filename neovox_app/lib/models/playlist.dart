@@ -15,7 +15,9 @@ class Playlist {
         id: json['id'] as String,
         name: json['name'] as String,
         ytId: json['ytId'] as String,
-        added: json['added'] as int,
+        added: json['added'] is int
+            ? json['added'] as int
+            : int.parse(json['added'].toString()),
       );
 }
 
