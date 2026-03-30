@@ -1,6 +1,6 @@
 FROM node:20-alpine
 
-# better-sqlite3 necesita build tools para compilar el módulo nativo
+# build tools para módulos nativos
 RUN apk add --no-cache python3 make g++
 
 WORKDIR /app
@@ -11,6 +11,7 @@ RUN npm ci --omit=dev
 
 # Copiar el resto del proyecto
 COPY server.js ./
+COPY api/ ./api/
 COPY public/ ./public/
 
 # Crear directorio para la base de datos
