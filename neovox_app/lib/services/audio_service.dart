@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yte;
 import '../models/playlist.dart';
-import 'api_service.dart';
 
 late NeovoxAudioHandler audioHandler;
 
@@ -92,6 +92,10 @@ class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
     await _playCurrentTrack();
   }
 
+  int _consecutiveErrors = 0;
+  static const _maxConsecutiveErrors = 3;
+  final yte.YoutubeExplode _yt = yte.YoutubeExplode();
+
   Future<void> _playCurrentTrack() async {
     final track = currentTrack;
     if (track == null) return;
@@ -106,11 +110,21 @@ class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
     ));
 
     try {
-      final url = await ApiService.getStreamUrl(track.videoId);
-      await _player.setUrl(url);
+      // Resolve stream URL directly via youtube_explode_dart
+      final manifest = await _yt.videos.streamsClient.getManifest(track.videoId);
+      final audioStreams = manifest.audioOnly.sortByBitrate();
+      if (audioStreams.isEmpty) throw Exception('No audio streams');
+      final streamUrl = audioStreams.last.url.toString();
+
+      await _player.setUrl(streamUrl);
       _player.play();
+      _consecutiveErrors = 0;
     } catch (e) {
-      // Skip to next on error
+      _consecutiveErrors++;
+      if (_consecutiveErrors >= _maxConsecutiveErrors) {
+        _consecutiveErrors = 0;
+        return; // Stop trying after 3 consecutive failures
+      }
       if (currentIndex < queue_.length - 1) {
         Future.delayed(const Duration(seconds: 1), () => skipToNext());
       }
