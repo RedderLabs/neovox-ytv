@@ -2,7 +2,8 @@ node_modules/
 data/*.db
 data/*.db-wal
 data/*.db-shm
-*.txt
+deploy.txt
+resumen.txt
 .claude/
 .vscode/
 .env
