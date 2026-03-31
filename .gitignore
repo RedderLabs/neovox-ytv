@@ -2,5 +2,8 @@ node_modules/
 data/*.db
 data/*.db-wal
 data/*.db-shm
+*.txt
 .claude/
+.vscode/
 .env
+*-player-script.js
