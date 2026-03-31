@@ -19,7 +19,7 @@ class Playlist {
         id: j['id'] ?? '',
         name: j['name'] ?? '',
         ytId: j['ytId'] ?? '',
-        added: j['added'] ?? 0,
+        added: j['added'] is int ? j['added'] : int.tryParse('${j['added']}') ?? 0,
       );
 }
 

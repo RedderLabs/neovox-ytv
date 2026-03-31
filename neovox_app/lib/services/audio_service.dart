@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'package:audio_service/audio_service.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yte;
 import '../models/playlist.dart';
+// Conditional import for web player
+import 'yt_web_player_stub.dart'
+    if (dart.library.js_interop) 'yt_web_player.dart';
 
 late NeovoxAudioHandler audioHandler;
 
@@ -16,22 +20,69 @@ Future<void> initAudioService() async {
       androidStopForegroundOnPause: true,
     ),
   );
+
+  if (kIsWeb) {
+    await audioHandler._initWebPlayerAsync();
+  }
 }
 
 class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
+  // Native player (mobile/desktop)
   final AudioPlayer _player = AudioPlayer();
+
+  // Web player
+  Timer? _webPositionTimer;
+  bool _webPlaying = false;
+  Duration _webPosition = Duration.zero;
+  Duration _webDuration = Duration.zero;
 
   List<Track> queue_ = [];
   int currentIndex = -1;
   bool shuffleEnabled = false;
   int repeatMode_ = 0; // 0=off, 1=all, 2=one
 
-  Track? get currentTrack => currentIndex >= 0 && currentIndex < queue_.length ? queue_[currentIndex] : null;
+  Track? get currentTrack =>
+      currentIndex >= 0 && currentIndex < queue_.length ? queue_[currentIndex] : null;
 
   final _trackController = StreamController<Track?>.broadcast();
   Stream<Track?> get trackStream => _trackController.stream;
 
+  // Unified streams for UI
+  final _positionController = StreamController<Duration>.broadcast();
+  final _durationController = StreamController<Duration?>.broadcast();
+  final _playingController = StreamController<bool>.broadcast();
+
   NeovoxAudioHandler() {
+    if (!kIsWeb) {
+      _initNativePlayer();
+    }
+  }
+
+  Future<void> _initWebPlayerAsync() async {
+    final webPlayer = YtWebPlayer();
+    await webPlayer.init();
+
+    webPlayer.playingStream.listen((playing) {
+      _webPlaying = playing;
+      _playingController.add(playing);
+    });
+
+    webPlayer.endedStream.listen((_) {
+      _onTrackEnd();
+    });
+
+    // Poll position
+    _webPositionTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      _webPosition = Duration(milliseconds: (webPlayer.getCurrentTime() * 1000).toInt());
+      _webDuration = Duration(milliseconds: (webPlayer.getDuration() * 1000).toInt());
+      _positionController.add(_webPosition);
+      if (_webDuration.inSeconds > 0) {
+        _durationController.add(_webDuration);
+      }
+    });
+  }
+
+  void _initNativePlayer() {
     _player.playbackEventStream.listen((event) {
       final playing = _player.playing;
       playbackState.add(playbackState.value.copyWith(
@@ -74,8 +125,13 @@ class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
 
   void _onTrackEnd() {
     if (repeatMode_ == 2) {
-      _player.seek(Duration.zero);
-      _player.play();
+      if (kIsWeb) {
+        YtWebPlayer().seekTo(0);
+        YtWebPlayer().play();
+      } else {
+        _player.seek(Duration.zero);
+        _player.play();
+      }
       return;
     }
     if (currentIndex < queue_.length - 1) {
@@ -110,20 +166,27 @@ class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
     ));
 
     try {
-      // Resolve stream URL directly via youtube_explode_dart
-      final manifest = await _yt.videos.streamsClient.getManifest(track.videoId);
-      final audioStreams = manifest.audioOnly.sortByBitrate();
-      if (audioStreams.isEmpty) throw Exception('No audio streams');
-      final streamUrl = audioStreams.last.url.toString();
-
-      await _player.setUrl(streamUrl);
-      _player.play();
+      if (kIsWeb) {
+        // Web: use YouTube IFrame Player — no CORS, no scraping
+        YtWebPlayer().loadAndPlay(track.videoId);
+        _webPlaying = true;
+        _playingController.add(true);
+      } else {
+        // Mobile/desktop: resolve directly via youtube_explode_dart
+        final manifest = await _yt.videos.streamsClient.getManifest(track.videoId);
+        final audioStreams = manifest.audioOnly.sortByBitrate();
+        if (audioStreams.isEmpty) throw Exception('No audio streams');
+        final streamUrl = audioStreams.last.url.toString();
+        await _player.setUrl(streamUrl);
+        _player.play();
+      }
       _consecutiveErrors = 0;
     } catch (e) {
+      debugPrint('AudioService: failed to play ${track.videoId}: $e');
       _consecutiveErrors++;
       if (_consecutiveErrors >= _maxConsecutiveErrors) {
         _consecutiveErrors = 0;
-        return; // Stop trying after 3 consecutive failures
+        return;
       }
       if (currentIndex < queue_.length - 1) {
         Future.delayed(const Duration(seconds: 1), () => skipToNext());
@@ -132,19 +195,41 @@ class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async {
+    if (kIsWeb) {
+      YtWebPlayer().play();
+    } else {
+      await _player.play();
+    }
+  }
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async {
+    if (kIsWeb) {
+      YtWebPlayer().pause();
+    } else {
+      await _player.pause();
+    }
+  }
 
   @override
   Future<void> stop() async {
-    await _player.stop();
+    if (kIsWeb) {
+      YtWebPlayer().stop();
+    } else {
+      await _player.stop();
+    }
     await super.stop();
   }
 
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> seek(Duration position) async {
+    if (kIsWeb) {
+      YtWebPlayer().seekTo(position.inMilliseconds / 1000.0);
+    } else {
+      await _player.seek(position);
+    }
+  }
 
   @override
   Future<void> skipToNext() async {
@@ -156,9 +241,16 @@ class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
 
   @override
   Future<void> skipToPrevious() async {
-    if (_player.position.inSeconds > 3) {
-      await _player.seek(Duration.zero);
-      return;
+    if (kIsWeb) {
+      if (_webPosition.inSeconds > 3) {
+        YtWebPlayer().seekTo(0);
+        return;
+      }
+    } else {
+      if (_player.position.inSeconds > 3) {
+        await _player.seek(Duration.zero);
+        return;
+      }
     }
     if (currentIndex > 0) {
       currentIndex--;
@@ -166,15 +258,31 @@ class NeovoxAudioHandler extends BaseAudioHandler with SeekHandler {
     }
   }
 
-  Future<void> setVolume(double volume) => _player.setVolume(volume);
-  Future<void> setSpeed(double speed) => _player.setSpeed(speed);
+  Future<void> setVolume(double volume) async {
+    if (kIsWeb) {
+      YtWebPlayer().setVolume((volume * 100).toInt());
+    } else {
+      await _player.setVolume(volume);
+    }
+  }
 
-  Stream<Duration> get positionStream => _player.positionStream;
-  Stream<Duration?> get durationStream => _player.durationStream;
-  Stream<bool> get playingStream => _player.playingStream;
-  Duration get position => _player.position;
-  Duration? get duration => _player.duration;
-  bool get isPlaying => _player.playing;
+  Future<void> setSpeed(double speed) async {
+    if (!kIsWeb) {
+      await _player.setSpeed(speed);
+    }
+  }
+
+  // Unified streams — UI uses these
+  Stream<Duration> get positionStream =>
+      kIsWeb ? _positionController.stream : _player.positionStream;
+  Stream<Duration?> get durationStream =>
+      kIsWeb ? _durationController.stream : _player.durationStream;
+  Stream<bool> get playingStream =>
+      kIsWeb ? _playingController.stream : _player.playingStream;
+
+  Duration get position => kIsWeb ? _webPosition : _player.position;
+  Duration? get duration => kIsWeb ? _webDuration : _player.duration;
+  bool get isPlaying => kIsWeb ? _webPlaying : _player.playing;
 
   void toggleShuffle() {
     shuffleEnabled = !shuffleEnabled;

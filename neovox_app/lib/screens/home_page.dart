@@ -65,12 +65,16 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Cargando ${pl.name}...')));
     try {
       final data = await ApiService.getPlaylistItems(pl.ytId);
+      debugPrint('HomePage: playlist-items API response keys: ${data.keys}');
       final items = (data['items'] as List).map((j) => Track.fromJson(j)).toList();
+      debugPrint('HomePage: parsed ${items.length} tracks');
       if (items.isNotEmpty) {
         audioHandler.playQueue(items, 0);
         return;
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('HomePage: API playlist-items failed: $e');
+    }
     // Fallback: client-side
     try {
       final ytClient = yte.YoutubeExplode();
@@ -82,6 +86,7 @@ class _HomePageState extends State<HomePage> with AutomaticKeepAliveClientMixin 
       )).toList();
       if (items.isNotEmpty) audioHandler.playQueue(items, 0);
     } catch (e) {
+      debugPrint('HomePage: youtube_explode fallback also failed: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error al cargar playlist')));
       }
